@@ -24,7 +24,7 @@ def generate_pdf_report(data):
     # ==========================================
     # 1. สร้าง PDF A4
     # ==========================================
-    pdf = FPDF(
+    pdf = FPD(
         orientation="P",
         unit="mm",
         format="A4"
@@ -444,25 +444,6 @@ def generate_pdf_report(data):
     )
 
     # ==========================================
-    # 12.5 FOOTER
-    # ==========================================
-    
-    set_font(9)
-
-    pdf.set_xy(
-        pdf.l_margin,
-        pdf.h - 10
-    )
-    
-    pdf.cell(
-        w=PAGE_WIDTH,
-        h=1,
-        text="ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
-        border=0,
-        align="L"
-    )
-
-    # ==========================================
     # 13. Save PDF
     # ==========================================
     tmp_file = tempfile.NamedTemporaryFile(
@@ -477,6 +458,24 @@ def generate_pdf_report(data):
     )
 
     return tmp_file.name
+
+    class PDF(FPDF):
+
+        def footer(self):
+            self.set_y(-10)
+    
+            self.set_font(
+                "THSarabunNew",
+                size=9
+            )
+    
+            self.cell(
+                0,
+                5,
+                "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
+                border=0,
+                align="L"
+            )
 
 # ==========================================
 # UI หน้าเว็บหลัก
