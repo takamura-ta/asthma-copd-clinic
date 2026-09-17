@@ -1,5 +1,6 @@
 import streamlit as st
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 import tempfile
 import os
 
@@ -35,446 +36,155 @@ class PDFReport(FPDF):
 
 # --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 ---
 def generate_pdf_report(data):
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
-    import tempfile
-    import os
-
-    # ==========================================
-    # 1. สร้าง PDF A4
-    # ==========================================
-    pdf = FPDF(
-        orientation="P",
-        unit="mm",
-        format="A4"
-    )
-
-    pdf.set_margins(
-        left=10,
-        top=12,
-        right=10
-    )
-
-    pdf.set_auto_page_break(
-        auto=True,
-        margin=18
-    )
-
+    pdf = PDFReport(orientation="P", unit="mm", format="A4")
+    pdf.set_margins(left=10, top=12, right=10)
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
-
-    # ==========================================
-    # 2. โหลดฟอนต์ภาษาไทย
-    # ==========================================
+    
+    # โหลดฟอนต์ภาษาไทย
     font_path = "THSarabunNew.ttf"
     has_thai_font = os.path.exists(font_path)
-
+    
     if has_thai_font:
-        pdf.add_font(
-            "THSarabunNew",
-            fname=font_path
-        )
+        pdf.add_font("THSarabunNew", fname=font_path)
         font_name = "THSarabunNew"
     else:
         font_name = "Arial"
-
-    # ==========================================
-    # 3. Helper: ตั้ง font
-    # ==========================================
+        
     def set_font(size=16):
-        pdf.set_font(
-            font_name,
-            size=size
-        )
-
-    # ==========================================
-    # 4. ขนาดพื้นที่
-    # ==========================================
+        pdf.set_font(font_name, size=size)
+        
     PAGE_WIDTH = pdf.w - pdf.l_margin - pdf.r_margin
-
     LABEL_WIDTH = 65
     VALUE_WIDTH = PAGE_WIDTH - LABEL_WIDTH
-
-    # ==========================================
-    # 5. Helper: section title
-    # ==========================================
+    
+    # Helper: section title
     def add_section_title(title):
-
         set_font(17)
-
         pdf.multi_cell(
-            w=PAGE_WIDTH,
-            h=6,
-            text=str(title),
-            border=0,
-            align="L",
-            new_x=XPos.LMARGIN,
-            new_y=YPos.NEXT,
-            wrapmode="CHAR"
+            w=PAGE_WIDTH, h=6, text=str(title), border=0, align="L",
+            new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
         )
-
         y = pdf.get_y()
-
-        pdf.line(
-            pdf.l_margin,
-            y,
-            pdf.w - pdf.r_margin,
-            y
-        )
-
+        pdf.line(pdf.l_margin, y, pdf.w - pdf.r_margin, y)
         pdf.ln(1.5)
-
-    # ==========================================
-    # 6. Helper: ข้อมูล 1 row
-    # ==========================================
+        
+    # Helper: ข้อมูล 1 row
     def add_secure_row(label, value):
-
         label = str(label)
         value = str(value) if value is not None else "-"
-
         set_font(15)
-
-        # --------------------------------------
-        # จำตำแหน่งเริ่มต้น
-        # --------------------------------------
+        
         start_x = pdf.get_x()
         start_y = pdf.get_y()
-
-        # --------------------------------------
-        # วัดความสูงของ Label
-        # --------------------------------------
+        
         label_height = pdf.multi_cell(
-            w=LABEL_WIDTH,
-            h=6,
-            text=label,
-            border=0,
-            dry_run=True,
-            output="HEIGHT",
-            wrapmode="CHAR"
+            w=LABEL_WIDTH, h=6, text=label, border=0, dry_run=True, output="HEIGHT", wrapmode="CHAR"
         )
-
-        # --------------------------------------
-        # วัดความสูงของ Value
-        # --------------------------------------
         value_height = pdf.multi_cell(
-            w=VALUE_WIDTH,
-            h=6,
-            text=value,
-            border=0,
-            dry_run=True,
-            output="HEIGHT",
-            wrapmode="CHAR"
+            w=VALUE_WIDTH, h=6, text=value, border=0, dry_run=True, output="HEIGHT", wrapmode="CHAR"
         )
-
-        row_height = max(
-            label_height,
-            value_height,
-            6
-        )
-
-        # --------------------------------------
-        # ตรวจว่าพื้นที่หน้าเหลือพอหรือไม่
-        # --------------------------------------
-        available_height = (
-            pdf.h
-            - pdf.b_margin
-            - pdf.get_y()
-        )
-
+        row_height = max(label_height, value_height, 6)
+        
+        available_height = pdf.h - pdf.b_margin - pdf.get_y()
         if row_height > available_height:
-
             pdf.add_page()
-
             start_x = pdf.l_margin
             start_y = pdf.get_y()
-
-        # --------------------------------------
-        # พิมพ์ LABEL
-        # --------------------------------------
-        pdf.set_xy(
-            start_x,
-            start_y
-        )
-
+            
+        pdf.set_xy(start_x, start_y)
         pdf.multi_cell(
-            w=LABEL_WIDTH,
-            h=6,
-            text=label,
-            border=0,
-            align="L",
-            new_x=XPos.RIGHT,
-            new_y=YPos.TOP,
-            wrapmode="CHAR"
+            w=LABEL_WIDTH, h=6, text=label, border=0, align="L",
+            new_x=XPos.RIGHT, new_y=YPos.TOP, wrapmode="CHAR"
         )
-
-        # --------------------------------------
-        # พิมพ์ VALUE
-        # --------------------------------------
-        pdf.set_xy(
-            start_x + LABEL_WIDTH,
-            start_y
-        )
-
+        
+        pdf.set_xy(start_x + LABEL_WIDTH, start_y)
         pdf.multi_cell(
-            w=VALUE_WIDTH,
-            h=6,
-            text=value,
-            border=0,
-            align="L",
-            new_x=XPos.LMARGIN,
-            new_y=YPos.NEXT,
-            wrapmode="CHAR"
+            w=VALUE_WIDTH, h=6, text=value, border=0, align="L",
+            new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
         )
-
-        # --------------------------------------
-        # ปรับ Y ให้เท่ากับ row ที่สูงที่สุด
-        # --------------------------------------
-        pdf.set_y(
-            start_y + row_height
-        )
-
-    # ==========================================
+        pdf.set_y(start_y + row_height)
+        
     # 7. HEADER
-    # ==========================================
     set_font(21)
-    
     pdf.multi_cell(
-        w=PAGE_WIDTH,
-        h=8,
-        text="รายงานสรุปการประเมิน Asthma / COPD",
-        border=0,
-        align="C",
-        new_x=XPos.LMARGIN,
-        new_y=YPos.NEXT,
-        wrapmode="CHAR"
+        w=PAGE_WIDTH, h=8, text="รายงานสรุปการประเมิน Asthma / COPD", border=0, align="C",
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
     )
-    
     set_font(16)
-    
     pdf.multi_cell(
-        w=PAGE_WIDTH,
-        h=7,
-        text="คลินิกโรคปอด โรงพยาบาลวานรนิวาส",
-        border=0,
-        align="C",
-        new_x=XPos.LMARGIN,
-        new_y=YPos.NEXT,
-        wrapmode="CHAR"
+        w=PAGE_WIDTH, h=7, text="คลินิกโรคปอด โรงพยาบาลวานรนิวาส", border=0, align="C",
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
     )
     
-    # เส้นใต้ Header
     y = pdf.get_y()
-    
-    pdf.line(
-        pdf.l_margin,
-        y,
-        pdf.w - pdf.r_margin,
-        y
-    )
-    
+    pdf.line(pdf.l_margin, y, pdf.w - pdf.r_margin, y)
     pdf.ln(3)
-    # ==========================================
+    
     # 8. Patient Information
-    # ==========================================
-    add_section_title(
-        "ข้อมูลผู้ป่วย (Patient Information)"
-    )
-
-    add_secure_row(
-        "เลขประจำตัวผู้ป่วย (HN):",
-        data.get("hn")
-        if data.get("hn")
-        else "- ไม่ระบุ -"
-    )
-
-    add_secure_row(
-        "ประเภทโรค (Disease):",
-        data.get("disease", "-")
-    )
-
-    add_secure_row(
-        "อายุ / เพศ:",
-        f"{data.get('age', '-')} ปี / "
-        f"{data.get('sex', '-')} "
-        f"(BMI: {data.get('bmi', 0):.1f})"
-    )
-
-    add_secure_row(
-        "ค่าเป้าหมายปอด (Predicted PEFR):",
-        f"{data.get('pred_pefr', 0)} L/min"
-    )
-
+    add_section_title("ข้อมูลผู้ป่วย (Patient Information)")
+    add_secure_row("เลขประจำตัวผู้ป่วย (HN):", data.get("hn") if data.get("hn") else "- ไม่ระบุ -")
+    add_secure_row("ประเภทโรค (Disease):", data.get("disease", "-"))
+    add_secure_row("อายุ / เพศ:", f"{data.get('age', '-')} ปี / {data.get('sex', '-')} (BMI: {data.get('bmi', 0):.1f})")
+    add_secure_row("ค่าเป้าหมายปอด (Predicted PEFR):", f"{data.get('pred_pefr', 0)} L/min")
     pdf.ln(2)
-
-    # ==========================================
+    
     # 9. Symptoms & Tests
-    # ==========================================
-    add_section_title(
-        "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ "
-        "(Symptoms & Tests)"
-    )
-
-    add_secure_row(
-        "อาการกลางวัน / กลางคืน:",
-        f"{data.get('day_symp', '-')} / "
-        f"{data.get('night_symp', '-')}"
-    )
-
-    add_secure_row(
-        "ประวัติเข้า ER หรือ Admit:",
-        f"ER {data.get('er_visit', 0)} ครั้ง / "
-        f"Admit {data.get('admit_days', 0)} วัน"
-    )
-
-    add_secure_row(
-        "ประวัติการสูบบุหรี่ (Smoking):",
-        data.get("smoking", "-")
-    )
-
-    add_secure_row(
-        "ลักษณะเสมหะ (Sputum):",
-        data.get("sputum", "-")
-    )
-
-    add_secure_row(
-        "คะแนนความเหนื่อยหอบ (mMRC):",
-        data.get("mmrc", "-")
-    )
-
+    add_section_title("ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests)")
+    add_secure_row("อาการกลางวัน / กลางคืน:", f"{data.get('day_symp', '-')} / {data.get('night_symp', '-')}")
+    add_secure_row("ประวัติเข้า ER หรือ Admit:", f"ER {data.get('er_visit', 0)} ครั้ง / Admit {data.get('admit_days', 0)} วัน")
+    add_secure_row("ประวัติการสูบบุหรี่ (Smoking):", data.get("smoking", "-"))
+    add_secure_row("ลักษณะเสมหะ (Sputum):", data.get("sputum", "-"))
+    add_secure_row("คะแนนความเหนื่อยหอบ (mMRC):", data.get("mmrc", "-"))
+    
     if "COPD" in data.get("disease", ""):
-
-        add_secure_row(
-            "คะแนน CAT Score:",
-            f"{data.get('cat', 0)} คะแนน"
-        )
-
-    add_secure_row(
-        "ระยะทางเดิน 6 นาที (6MWT):",
-        f"{data.get('walk_dist', 0)} เมตร"
-    )
-
-    add_secure_row(
-        "ออกซิเจนในเลือด (SpO2 Room Air):",
-        f"{data.get('o2_sat', 0)} %"
-    )
-
+        add_secure_row("คะแนน CAT Score:", f"{data.get('cat', 0)} คะแนน")
+        
+    add_secure_row("ระยะทางเดิน 6 นาที (6MWT):", f"{data.get('walk_dist', 0)} เมตร")
+    add_secure_row("ออกซิเจนในเลือด (SpO2 Room Air):", f"{data.get('o2_sat', 0)} %")
     pdf.ln(2)
-
-    # ==========================================
+    
     # 10. Clinical Assessment
-    # ==========================================
-    add_section_title(
-        "ผลการประเมินทางคลินิก (Clinical Assessment)"
-    )
-
-    add_secure_row(
-        "ระดับการควบคุมโรค (Control Level):",
-        data.get("control", "-")
-    )
-
-    add_secure_row(
-        "ความเสี่ยงกำเริบ (Exacerbation Risk):",
-        data.get("risk", "-")
-    )
-
-    add_secure_row(
-        "สมรรถภาพปอด (%Predicted PEFR):",
-        f"{data.get('pct_pred', 0):.1f}% "
-        f"(เป่าได้ {data.get('pre_pefr', 0)} L/min)"
-    )
-
-    add_secure_row(
-        "ความร่วมมือในการใช้ยา (Adherence):",
-        f"{data.get('adherence', 0)}%"
-    )
-
+    add_section_title("ผลการประเมินทางคลินิก (Clinical Assessment)")
+    add_secure_row("ระดับการควบคุมโรค (Control Level):", data.get("control", "-"))
+    add_secure_row("ความเสี่ยงกำเริบ (Exacerbation Risk):", data.get("risk", "-"))
+    add_secure_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data.get('pct_pred', 0):.1f}% (เป่าได้ {data.get('pre_pefr', 0)} L/min)")
+    add_secure_row("ความร่วมมือในการใช้ยา (Adherence):", f"{data.get('adherence', 0)}%")
     pdf.ln(2)
-
-    # ==========================================
+    
     # 11. Doctor's Summary
-    # ==========================================
-    add_section_title(
-        "สรุปและคำแนะนำ (Doctor's Summary & Suggestions)"
-    )
-
-    suggestions = data.get(
-        "suggestions",
-        []
-    )
-
+    add_section_title("สรุปและคำแนะนำ (Doctor's Summary & Suggestions)")
+    suggestions = data.get("suggestions", [])
     if suggestions:
-
         for sug in suggestions:
-
             set_font(15)
-
             pdf.multi_cell(
-                w=PAGE_WIDTH,
-                h=6,
-                text=f"- {str(sug)}",
-                border=0,
-                align="L",
-                new_x=XPos.LMARGIN,
-                new_y=YPos.NEXT,
-                wrapmode="CHAR"
+                w=PAGE_WIDTH, h=6, text=f"- {str(sug)}", border=0, align="L",
+                new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
             )
-
     else:
-
         set_font(15)
-
         pdf.multi_cell(
-            w=PAGE_WIDTH,
-            h=6,
-            text="- ไม่มีคำแนะนำเพิ่มเติม",
-            border=0,
-            align="L",
-            new_x=XPos.LMARGIN,
-            new_y=YPos.NEXT,
-            wrapmode="CHAR"
+            w=PAGE_WIDTH, h=6, text="- ไม่มีคำแนะนำเพิ่มเติม", border=0, align="L",
+            new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
         )
-
-    # ==========================================
+        
     # 12. Signature
-    # ==========================================
     pdf.ln(5)
-
     set_font(15)
-
     pdf.multi_cell(
-        w=PAGE_WIDTH,
-        h=6,
-        text="ลงชื่อผู้ประเมิน.......................................................",
-        border=0,
-        align="R",
-        new_x=XPos.LMARGIN,
-        new_y=YPos.NEXT,
-        wrapmode="CHAR"
+        w=PAGE_WIDTH, h=6, text="ลงชื่อผู้ประเมิน.......................................................", border=0, align="R",
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
     )
-
     pdf.multi_cell(
-        w=PAGE_WIDTH,
-        h=6,
-        text="วันที่........./........./.........",
-        border=0,
-        align="R",
-        new_x=XPos.LMARGIN,
-        new_y=YPos.NEXT,
-        wrapmode="CHAR"
+        w=PAGE_WIDTH, h=6, text="วันที่........./........./.........", border=0, align="R",
+        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
     )
-
-    # ==========================================
+    
     # 13. Save PDF
-    # ==========================================
-    tmp_file = tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".pdf"
-    )
-
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     tmp_file.close()
-
-    pdf.output(
-        tmp_file.name
-    )
+    pdf.output(tmp_file.name)
     return tmp_file.name
 
 # ==========================================
@@ -615,17 +325,13 @@ with tab6:
         "adherence": adherence,
         "cat": st.session_state.cat_score,
         "suggestions": suggestions,
-    
         "day_symp": day_symp,
         "night_symp": night_symp,
         "rescue_med": rescue_med,
         "er_visit": er_visit,
         "admit_days": admit_days,
-    
-        # ❗ ไม่มี emoji ใน PDF
         "smoking": "สูบบุหรี่" if smoking else "ไม่สูบ",
         "sputum": "มีเสมหะเหลือง/เขียว" if sputum else "ไม่มี",
-    
         "mmrc": mmrc_score_only,
         "walk_dist": walk_dist,
         "o2_sat": o2_sat
