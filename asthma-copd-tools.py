@@ -14,98 +14,434 @@ def calculate_predicted_pefr(age, height, sex):
         pefr = (9.726 * age) - (0.05037 * (age**2)) + (23.622 * height) - (0.05987 * (height**2)) - (0.04323 * age * height) - 1895.5
     return max(0, round(pefr))
 
-# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 (เวอร์ชันแก้ไขเรื่องฟอนต์ตัวหนา) ---
+# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 ---
 def generate_pdf_report(data):
-    pdf = FPDF(format='A4')
+    # ==========================================
+    # 1. สร้าง PDF A4 แนวตั้ง
+    # ==========================================
+    pdf = FPDF(
+        orientation="P",
+        unit="mm",
+        format="A4"
+    )
+
+    # กำหนดขอบกระดาษ
+    pdf.set_margins(
+        left=10,
+        top=15,
+        right=10
+    )
+
+    # ให้ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
+    pdf.set_auto_page_break(
+        auto=True,
+        margin=15
+    )
+
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # ตรวจสอบและโหลดฟอนต์ภาษาไทย
+
+    # ==========================================
+    # 2. ตรวจสอบและโหลดฟอนต์ภาษาไทย
+    # ==========================================
     font_path = "THSarabunNew.ttf"
     has_thai_font = os.path.exists(font_path)
-    
-    if has_thai_font:
-        pdf.add_font("THSarabunNew", fname=font_path)
-        pdf.set_font("THSarabunNew", size=22)
-    else:
-        pdf.set_font("Arial", size=14)
-        
-    # 1. หัวกระดาษ (Header)
-    if has_thai_font:
-        pdf.cell(0, 10, "รายงานสรุปการประเมิน Asthma / COPD", align="C", ln=True)
-        pdf.set_font("THSarabunNew", size=16)
-    else:
-        pdf.cell(0, 10, "Asthma / COPD Assessment Report", align="C", ln=True)
-        pdf.set_font("Arial", size=12)
-        
-    pdf.line(10, 25, 200, 25)
-    pdf.ln(5)
-    
-    # 🛡️ ฟังก์ชันช่วยพิมพ์ข้อมูลแบบปลอดภัย (ใช้ฟอนต์ปกติทั้งหมด ป้องกัน Error ตัวหนา)
-    def add_secure_row(label, value):
-        pdf.set_font("THSarabunNew" if has_thai_font else "Arial", size=16)
-        pdf.cell(65, 7, txt=label, ln=0)
-        pdf.multi_cell(0, 7, txt=str(value))
-        
-    # 2. ข้อมูลผู้ป่วย
-    add_secure_row("เลขประจำตัวผู้ป่วย (HN):", data['hn'] if data['hn'] else "- ไม่ระบุ -")
-    add_secure_row("ประเภทโรค (Disease):", data['disease'])
-    add_secure_row("อายุ / เพศ:", f"{data['age']} ปี / {data['sex']} (BMI: {data['bmi']:.1f})")
-    add_secure_row("ค่าเป้าหมายปอด (Predicted PEFR):", f"{data['pred_pefr']} L/min")
-    
-    pdf.ln(3)
-    
-    # 3. ข้อมูลการประเมินอาการและการทดสอบ
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
-    pdf.cell(0, 7, "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests):", ln=True)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(2)
-    
-    add_secure_row("อาการกลางวัน / กลางคืน:", f"{data['day_symp']} / {data['night_symp']}")
-    add_secure_row("ประวัติเข้า ER หรือ Admit:", f"ER {data['er_visit']} ครั้ง / Admit {data['admit_days']} วัน")
-    add_secure_row("ประวัติการสูบบุหรี่ (Smoking):", data['smoking'])
-    add_secure_row("ลักษณะเสมหะ (Sputum):", data['sputum'])
-    add_secure_row("คะแนนความเหนื่อยหอบ (mMRC):", data['mmrc'])
-    
-    if "COPD" in data['disease']:
-        add_secure_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
-        
-    add_secure_row("ระยะทางเดิน 6 นาที (6MWT):", f"{data['walk_dist']} เมตร")
-    add_secure_row("ออกซิเจนในเลือด (SpO2 Room Air):", f"{data['o2_sat']} %")
-    
-    pdf.ln(3)
-    
-    # 4. ผลการประเมินทางคลินิก
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
-    pdf.cell(0, 7, "ผลการประเมินทางคลินิก (Clinical Assessment):", ln=True)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(2)
-    
-    add_secure_row("ระดับการควบคุมโรค (Control Level):", data['control'])
-    add_secure_row("ความเสี่ยงกำเริบ (Exacerbation Risk):", data['risk'])
-    add_secure_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data['pct_pred']:.1f}% (เป่าได้ {data['pre_pefr']} L/min)")
-    add_secure_row("ความร่วมมือในการใช้ยา (Adherence):", f"{data['adherence']}%")
-        
-    pdf.ln(3)
-    
-    # 5. คำแนะนำสำหรับแพทย์
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
-    pdf.cell(0, 7, "สรุปและคำแนะนำ (Doctor's Summary & Suggestions):", ln=True)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(2)
-    
-    if has_thai_font: pdf.set_font("THSarabunNew", size=16)
-    for sug in data['suggestions']:
-        pdf.multi_cell(0, 7, txt=f"- {sug}")
-        
-    pdf.ln(10)
-    pdf.cell(0, 7, "ลงชื่อผู้ประเมิน.......................................................", align="R", ln=True)
-    pdf.cell(0, 7, "วันที่........./........./.........", align="R", ln=True)
-    
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-    pdf.output(tmp_file.name)
-    return tmp_file.name
 
+    if has_thai_font:
+        pdf.add_font(
+            "THSarabunNew",
+            fname=font_path
+        )
+        font_name = "THSarabunNew"
+    else:
+        font_name = "Arial"
+
+    # ==========================================
+    # 3. ฟังก์ชันตั้ง Font
+    # ==========================================
+    def set_pdf_font(size=16):
+        pdf.set_font(
+            font_name,
+            size=size
+        )
+
+    # ==========================================
+    # 4. ฟังก์ชันพิมพ์ข้อความแบบปลอดภัย
+    #    รองรับภาษาไทยและข้อความยาว
+    # ==========================================
+    def safe_multi_cell(text, height=7, width=None, align="L"):
+        """
+        พิมพ์ข้อความโดยคำนวณพื้นที่จริง
+        และใช้ CHAR wrapping เพื่อป้องกัน
+        'Not enough horizontal space to render a single character'
+        """
+
+        text = str(text) if text is not None else ""
+
+        # ถ้าไม่ได้กำหนด width
+        # ให้ใช้พื้นที่จากตำแหน่งปัจจุบันถึงขอบขวา
+        if width is None:
+            width = (
+                pdf.w
+                - pdf.r_margin
+                - pdf.get_x()
+            )
+
+        # ป้องกัน width <= 0
+        if width <= 1:
+            pdf.ln(height)
+
+            width = (
+                pdf.w
+                - pdf.l_margin
+                - pdf.r_margin
+            )
+
+        pdf.multi_cell(
+            w=width,
+            h=height,
+            text=text,
+            align=align,
+            border=0,
+            wrapmode="CHAR"
+        )
+
+    # ==========================================
+    # 5. ฟังก์ชันพิมพ์หัวข้อ section
+    # ==========================================
+    def add_section_title(title):
+        set_pdf_font(18)
+
+        # ใช้พื้นที่เต็มหน้ากระดาษ
+        full_width = (
+            pdf.w
+            - pdf.l_margin
+            - pdf.r_margin
+        )
+
+        safe_multi_cell(
+            title,
+            height=7,
+            width=full_width
+        )
+
+        # เส้นคั่น
+        y = pdf.get_y()
+
+        pdf.line(
+            pdf.l_margin,
+            y,
+            pdf.w - pdf.r_margin,
+            y
+        )
+
+        pdf.ln(2)
+
+    # ==========================================
+    # 6. ฟังก์ชันพิมพ์ข้อมูล 1 แถว
+    # ==========================================
+    def add_secure_row(label, value):
+        """
+        แสดงข้อมูลรูปแบบ
+
+        Label              Value
+
+        โดยคำนวณพื้นที่ที่เหลือจริง
+        และรองรับภาษาไทยที่ไม่มี whitespace
+        """
+
+        set_pdf_font(16)
+
+        label = str(label)
+        value = str(value) if value is not None else "-"
+
+        # ------------------------------------------
+        # ความกว้างของ Label
+        # ------------------------------------------
+        label_width = 65
+
+        # พิมพ์ label
+        pdf.cell(
+            w=label_width,
+            h=7,
+            text=label,
+            border=0
+        )
+
+        # ------------------------------------------
+        # คำนวณพื้นที่ที่เหลือ
+        # ------------------------------------------
+        remaining_width = (
+            pdf.w
+            - pdf.r_margin
+            - pdf.get_x()
+        )
+
+        # ------------------------------------------
+        # ป้องกันกรณีพื้นที่เหลือน้อยเกินไป
+        # ------------------------------------------
+        if remaining_width < 10:
+
+            # ขึ้นบรรทัดใหม่
+            pdf.ln(7)
+
+            # ใช้พื้นที่เต็มหน้า
+            remaining_width = (
+                pdf.w
+                - pdf.l_margin
+                - pdf.r_margin
+            )
+
+        # ------------------------------------------
+        # พิมพ์ value
+        # CHAR wrapping สำคัญมากสำหรับภาษาไทย
+        # ------------------------------------------
+        pdf.multi_cell(
+            w=remaining_width,
+            h=7,
+            text=value,
+            border=0,
+            align="L",
+            wrapmode="CHAR"
+        )
+
+    # ==========================================
+    # 7. Header
+    # ==========================================
+    if has_thai_font:
+        set_pdf_font(22)
+
+        safe_multi_cell(
+            "รายงานสรุปการประเมิน Asthma / COPD",
+            height=10,
+            width=pdf.w - pdf.l_margin - pdf.r_margin,
+            align="C"
+        )
+
+        set_pdf_font(16)
+
+    else:
+        set_pdf_font(16)
+
+        safe_multi_cell(
+            "Asthma / COPD Assessment Report",
+            height=10,
+            width=pdf.w - pdf.l_margin - pdf.r_margin,
+            align="C"
+        )
+
+        set_pdf_font(12)
+
+    # เส้นใต้ Header
+    y = pdf.get_y()
+
+    pdf.line(
+        pdf.l_margin,
+        y,
+        pdf.w - pdf.r_margin,
+        y
+    )
+
+    pdf.ln(5)
+
+    # ==========================================
+    # 8. ข้อมูลผู้ป่วย
+    # ==========================================
+    add_section_title("ข้อมูลผู้ป่วย (Patient Information)")
+
+    add_secure_row(
+        "เลขประจำตัวผู้ป่วย (HN):",
+        data.get("hn") if data.get("hn") else "- ไม่ระบุ -"
+    )
+
+    add_secure_row(
+        "ประเภทโรค (Disease):",
+        data.get("disease", "-")
+    )
+
+    add_secure_row(
+        "อายุ / เพศ:",
+        f"{data.get('age', '-')} ปี / "
+        f"{data.get('sex', '-')} "
+        f"(BMI: {data.get('bmi', 0):.1f})"
+    )
+
+    add_secure_row(
+        "ค่าเป้าหมายปอด (Predicted PEFR):",
+        f"{data.get('pred_pefr', 0)} L/min"
+    )
+
+    pdf.ln(3)
+
+    # ==========================================
+    # 9. อาการและการทดสอบ
+    # ==========================================
+    add_section_title(
+        "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ "
+        "(Symptoms & Tests)"
+    )
+
+    add_secure_row(
+        "อาการกลางวัน / กลางคืน:",
+        f"{data.get('day_symp', '-')} / "
+        f"{data.get('night_symp', '-')}"
+    )
+
+    add_secure_row(
+        "ประวัติเข้า ER หรือ Admit:",
+        f"ER {data.get('er_visit', 0)} ครั้ง / "
+        f"Admit {data.get('admit_days', 0)} วัน"
+    )
+
+    add_secure_row(
+        "ประวัติการสูบบุหรี่ (Smoking):",
+        data.get("smoking", "-")
+    )
+
+    add_secure_row(
+        "ลักษณะเสมหะ (Sputum):",
+        data.get("sputum", "-")
+    )
+
+    add_secure_row(
+        "คะแนนความเหนื่อยหอบ (mMRC):",
+        data.get("mmrc", "-")
+    )
+
+    # COPD เท่านั้น
+    if "COPD" in data.get("disease", ""):
+        add_secure_row(
+            "คะแนน CAT Score:",
+            f"{data.get('cat', 0)} คะแนน"
+        )
+
+    add_secure_row(
+        "ระยะทางเดิน 6 นาที (6MWT):",
+        f"{data.get('walk_dist', 0)} เมตร"
+    )
+
+    add_secure_row(
+        "ออกซิเจนในเลือด (SpO2 Room Air):",
+        f"{data.get('o2_sat', 0)} %"
+    )
+
+    pdf.ln(3)
+
+    # ==========================================
+    # 10. ผลการประเมินทางคลินิก
+    # ==========================================
+    add_section_title(
+        "ผลการประเมินทางคลินิก (Clinical Assessment)"
+    )
+
+    add_secure_row(
+        "ระดับการควบคุมโรค (Control Level):",
+        data.get("control", "-")
+    )
+
+    add_secure_row(
+        "ความเสี่ยงกำเริบ (Exacerbation Risk):",
+        data.get("risk", "-")
+    )
+
+    add_secure_row(
+        "สมรรถภาพปอด (%Predicted PEFR):",
+        f"{data.get('pct_pred', 0):.1f}% "
+        f"(เป่าได้ {data.get('pre_pefr', 0)} L/min)"
+    )
+
+    add_secure_row(
+        "ความร่วมมือในการใช้ยา (Adherence):",
+        f"{data.get('adherence', 0)}%"
+    )
+
+    pdf.ln(3)
+
+    # ==========================================
+    # 11. คำแนะนำสำหรับแพทย์
+    # ==========================================
+    add_section_title(
+        "สรุปและคำแนะนำ "
+        "(Doctor's Summary & Suggestions)"
+    )
+
+    set_pdf_font(16)
+
+    suggestions = data.get("suggestions", [])
+
+    if suggestions:
+
+        for sug in suggestions:
+
+            # ใช้ bullet แบบ ASCII
+            # เพื่อป้องกันปัญหา encoding/font
+            suggestion_text = f"- {str(sug)}"
+
+            safe_multi_cell(
+                suggestion_text,
+                height=7,
+                width=(
+                    pdf.w
+                    - pdf.l_margin
+                    - pdf.r_margin
+                )
+            )
+
+            pdf.ln(1)
+
+    else:
+
+        safe_multi_cell(
+            "- ไม่มีคำแนะนำเพิ่มเติม",
+            height=7,
+            width=(
+                pdf.w
+                - pdf.l_margin
+                - pdf.r_margin
+            )
+        )
+
+    # ==========================================
+    # 12. ลายเซ็น
+    # ==========================================
+    pdf.ln(8)
+
+    set_pdf_font(16)
+
+    safe_multi_cell(
+        "ลงชื่อผู้ประเมิน.......................................................",
+        height=7,
+        width=(
+            pdf.w
+            - pdf.l_margin
+            - pdf.r_margin
+        ),
+        align="R"
+    )
+
+    safe_multi_cell(
+        "วันที่........./........./.........",
+        height=7,
+        width=(
+            pdf.w
+            - pdf.l_margin
+            - pdf.r_margin
+        ),
+        align="R"
+    )
+
+    # ==========================================
+    # 13. บันทึกไฟล์ PDF
+    # ==========================================
+    tmp_file = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pdf"
+    )
+
+    tmp_file.close()
+
+    pdf.output(tmp_file.name)
+
+    return tmp_file.name
 # ==========================================
 # UI หน้าเว็บหลัก
 # ==========================================
@@ -150,8 +486,8 @@ with tab2:
     
     st.subheader("อาการปัจจุบัน")
     col_cur1, col_cur2 = st.columns(2)
-    with col_cur1: smoking = st.checkbox("🚬 ปัจจุบันยังสูบบุหรี่")
-    with col_cur2: sputum = st.checkbox("🤧 มีเสมหะเหลือง/เขียว")
+    with col_cur1: smoking = st.checkbox("ปัจจุบันยังสูบบุหรี่")
+    with col_cur2: sputum = st.checkbox("มีเสมหะเหลือง/เขียว")
     
     mmrc_options = [
         "ระดับ 0: เหนื่อยเฉพาะเวลาออกกำลังกายหนัก ๆ เท่านั้น",
@@ -239,8 +575,8 @@ with tab6:
         "suggestions": suggestions,
         "day_symp": day_symp, "night_symp": night_symp, "rescue_med": rescue_med,
         "er_visit": er_visit, "admit_days": admit_days,
-        "smoking": "สูบบุหรี่ 🚬" if smoking else "ไม่สูบ",
-        "sputum": "มีเสมหะเหลือง/เขียว 🤧" if sputum else "ไม่มี",
+        "smoking": "สูบบุหรี่" if smoking else "ไม่สูบ",
+        "sputum": "มีเสมหะเหลือง/เขียว" if sputum else "ไม่มี",
         "mmrc": mmrc_score_only,
         "walk_dist": walk_dist,
         "o2_sat": o2_sat
