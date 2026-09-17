@@ -3,7 +3,7 @@ from fpdf import FPDF
 import tempfile
 import os
 
-# --- ⚙️ การตั้งค่าหน้าจอ (ต้องอยู่บรรทัดแรกเสมอ) ---
+# --- ⚙️ การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Asthma/COPD Follow-up Dashboard", layout="wide")
 
 # --- 🧠 ฟังก์ชันคำนวณ Predicted PEFR (อ้างอิงมาตรฐานประชากรไทย ปี 2000) ---
@@ -14,7 +14,7 @@ def calculate_predicted_pefr(age, height, sex):
         pefr = (9.726 * age) - (0.05037 * (age**2)) + (23.622 * height) - (0.05987 * (height**2)) - (0.04323 * age * height) - 1895.5
     return max(0, round(pefr))
 
-# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 ---
+# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 (เวอร์ชันปลอดภัย ป้องกัน Error พื้นที่) ---
 def generate_pdf_report(data):
     pdf = FPDF(format='A4')
     pdf.add_page()
@@ -26,9 +26,9 @@ def generate_pdf_report(data):
     
     if has_thai_font:
         pdf.add_font("THSarabunNew", fname=font_path)
-        pdf.set_font("THSarabunNew", size=24)
+        pdf.set_font("THSarabunNew", size=22)
     else:
-        pdf.set_font("Arial", size=16)
+        pdf.set_font("Arial", size=14)
         
     # 1. หัวกระดาษ (Header)
     if has_thai_font:
@@ -39,76 +39,70 @@ def generate_pdf_report(data):
         pdf.set_font("Arial", size=12)
         
     pdf.line(10, 25, 200, 25)
-    pdf.ln(8)
+    pdf.ln(5)
     
-    # ฟังก์ชันช่วยเขียนข้อมูลเป็นบรรทัด
-    def add_row(label, value, label_w=70):
-        pdf.cell(label_w, 8, txt=label, ln=0)
-        pdf.cell(0, 8, txt=str(value), ln=True)
+    # 🛡️ ฟังก์ชันช่วยพิมพ์ข้อมูลแบบปลอดภัย ป้องกันข้อความล้นและ Error พื้นที่
+    def add_secure_row(label, value):
+        pdf.set_font("THSarabunNew" if has_thai_font else "Arial", size=16, style='B' if has_thai_font else '')
+        pdf.cell(65, 7, txt=label, ln=0)
+        pdf.set_font("THSarabunNew" if has_thai_font else "Arial", size=16)
+        pdf.multi_cell(0, 7, txt=str(value))
         
     # 2. ข้อมูลผู้ป่วย
-    add_row("เลขประจำตัวผู้ป่วย (HN):", data['hn'] if data['hn'] else "- ไม่ระบุ -")
-    add_row("ประเภทโรค (Disease):", data['disease'])
-    add_row("อายุ (Age):", f"{data['age']} ปี")
-    add_row("เพศ (Sex):", data['sex'])
-    add_row("ค่าเป้าหมายปอด (Predicted PEFR):", f"{data['pred_pefr']} L/min")
+    add_secure_row("เลขประจำตัวผู้ป่วย (HN):", data['hn'] if data['hn'] else "- ไม่ระบุ -")
+    add_secure_row("ประเภทโรค (Disease):", data['disease'])
+    add_secure_row("อายุ / เพศ:", f"{data['age']} ปี / {data['sex']} (BMI: {data['bmi']:.1f})")
+    add_secure_row("ค่าเป้าหมายปอด (Predicted PEFR):", f"{data['pred_pefr']} L/min")
     
-    pdf.ln(5)
-    
-    # 3. ข้อมูลการประเมินอาการและการทดสอบ (Symptoms & Tests)
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
-    pdf.cell(0, 8, "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests):", ln=True)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(3)
     
-    if has_thai_font: pdf.set_font("THSarabunNew", size=16)
+    # 3. ข้อมูลการประเมินอาการและการทดสอบ
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18, style='B')
+    pdf.cell(0, 7, "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests):", ln=True)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(2)
     
-    # สรุปอาการ 4 สัปดาห์คร่าวๆ
-    add_row("อาการกลางวัน / กลางคืน:", f"{data['day_symp'].split('-')[1].strip()} / {data['night_symp'].split('-')[1].strip()}")
-    add_row("ประวัติเข้า ER หรือ Admit:", f"ER {data['er_visit']} ครั้ง / Admit {data['admit_days']} วัน")
-    add_row("ประวัติการสูบบุหรี่ (Smoking):", data['smoking'])
-    add_row("ลักษณะเสมหะ (Sputum):", data['sputum'])
-    
-    # 🌟 ดึงมาเฉพาะคะแนน mMRC สั้นๆ ป้องกัน Error พื้นที่ใน PDF ไม่พอ
-    add_row("คะแนนความเหนื่อยหอบ (mMRC Score):", data['mmrc'])
+    add_secure_row("อาการกลางวัน / กลางคืน:", f"{data['day_symp']} / {data['night_symp']}")
+    add_secure_row("ประวัติเข้า ER หรือ Admit:", f"ER {data['er_visit']} ครั้ง / Admit {data['admit_days']} วัน")
+    add_secure_row("ประวัติการสูบบุหรี่ (Smoking):", data['smoking'])
+    add_secure_row("ลักษณะเสมหะ (Sputum):", data['sputum'])
+    add_secure_row("คะแนนความเหนื่อยหอบ (mMRC):", data['mmrc'])
     
     if "COPD" in data['disease']:
-        add_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
+        add_secure_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
         
-    add_row("ระยะทางเดิน 6 นาที (6MWT):", f"{data['walk_dist']} เมตร")
-    add_row("ออกซิเจนในเลือด (SpO2 Room Air):", f"{data['o2_sat']} %")
+    add_secure_row("ระยะทางเดิน 6 นาที (6MWT):", f"{data['walk_dist']} เมตร")
+    add_secure_row("ออกซิเจนในเลือด (SpO2 Room Air):", f"{data['o2_sat']} %")
     
-    pdf.ln(5)
+    pdf.ln(3)
     
     # 4. ผลการประเมินทางคลินิก
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
-    pdf.cell(0, 8, "ผลการประเมินทางคลินิก (Clinical Assessment):", ln=True)
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18, style='B')
+    pdf.cell(0, 7, "ผลการประเมินทางคลินิก (Clinical Assessment):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
+    pdf.ln(2)
     
-    if has_thai_font: pdf.set_font("THSarabunNew", size=16)
-    add_row("ระดับการควบคุมโรค (Control Level):", data['control'])
-    add_row("ความเสี่ยงกำเริบ (Exacerbation Risk):", data['risk'])
-    add_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data['pct_pred']:.1f}% (เป่าได้ {data['pre_pefr']} L/min)")
-    add_row("ความร่วมมือในการใช้ยา (Adherence):", f"{data['adherence']}%")
+    add_secure_row("ระดับการควบคุมโรค (Control Level):", data['control'])
+    add_secure_row("ความเสี่ยงกำเริบ (Exacerbation Risk):", data['risk'])
+    add_secure_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data['pct_pred']:.1f}% (เป่าได้ {data['pre_pefr']} L/min)")
+    add_secure_row("ความร่วมมือในการใช้ยา (Adherence):", f"{data['adherence']}%")
         
-    pdf.ln(5)
+    pdf.ln(3)
     
     # 5. คำแนะนำสำหรับแพทย์
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
-    pdf.cell(0, 8, "สรุปและคำแนะนำ (Doctor's Summary & Suggestions):", ln=True)
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18, style='B')
+    pdf.cell(0, 7, "สรุปและคำแนะนำ (Doctor's Summary & Suggestions):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
+    pdf.ln(2)
     
     if has_thai_font: pdf.set_font("THSarabunNew", size=16)
     for sug in data['suggestions']:
-        pdf.multi_cell(0, 8, txt=f"- {sug}")
+        pdf.multi_cell(0, 7, txt=f"- {sug}")
         
-    pdf.ln(15)
-    pdf.cell(0, 8, "ลงชื่อผู้ประเมิน.......................................................", align="R", ln=True)
-    pdf.cell(0, 8, "วันที่........./........./.........", align="R", ln=True)
+    pdf.ln(10)
+    pdf.cell(0, 7, "ลงชื่อผู้ประเมิน.......................................................", align="R", ln=True)
+    pdf.cell(0, 7, "วันที่........./........./.........", align="R", ln=True)
     
-    # สร้างไฟล์ชั่วคราว
     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
     pdf.output(tmp_file.name)
     return tmp_file.name
@@ -160,7 +154,6 @@ with tab2:
     with col_cur1: smoking = st.checkbox("🚬 ปัจจุบันยังสูบบุหรี่")
     with col_cur2: sputum = st.checkbox("🤧 มีเสมหะเหลือง/เขียว")
     
-    # หน้าจอเว็บมีคำอธิบายครบถ้วนให้พยาบาลอ่านง่าย
     mmrc_options = [
         "ระดับ 0: เหนื่อยเฉพาะเวลาออกกำลังกายหนัก ๆ เท่านั้น",
         "ระดับ 1: เหนื่อยเมื่อเดินเร็วบนทางราบ หรือเดินขึ้นเนินที่ไม่ชัน",
@@ -169,8 +162,6 @@ with tab2:
         "ระดับ 4: เหนื่อยมากจนไม่ออกจากบ้าน หรือเหนื่อยแม้แต่ตอนแต่งตัว/ถอดเสื้อผ้า"
     ]
     mmrc_selected = st.selectbox("คะแนนประเมินความเหนื่อยหอบ (mMRC Score) 🚶‍♂️", mmrc_options)
-    
-    # ตัดเอาเฉพาะคะแนนสั้นๆ (เช่น "ระดับ 0") ไปใช้ใน PDF
     mmrc_score_only = mmrc_selected.split(":")[0]
 
 with tab3:
@@ -240,7 +231,6 @@ with tab6:
     st.markdown("---")
     st.subheader("📄 ส่งออกรายงาน (Export Report)")
     
-    # 📦 ส่งเฉพาะ mmrc_score_only เข้าไปใน PDF
     report_data = {
         "hn": hn,
         "disease": disease_type, "age": age, "sex": sex, "bmi": bmi,
@@ -252,7 +242,7 @@ with tab6:
         "er_visit": er_visit, "admit_days": admit_days,
         "smoking": "สูบบุหรี่ 🚬" if smoking else "ไม่สูบ",
         "sputum": "มีเสมหะเหลือง/เขียว 🤧" if sputum else "ไม่มี",
-        "mmrc": mmrc_score_only, # ส่งเฉพาะคะแนนสั้นๆ (เช่น ระดับ 0)
+        "mmrc": mmrc_score_only,
         "walk_dist": walk_dist,
         "o2_sat": o2_sat
     }
