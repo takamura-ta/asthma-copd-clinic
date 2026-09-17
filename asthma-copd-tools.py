@@ -69,9 +69,9 @@ def generate_pdf_report(data):
     add_row("ประวัติการสูบบุหรี่ (Smoking):", data['smoking'])
     add_row("ลักษณะเสมหะ (Sputum):", data['sputum'])
     
-    # แยกส่วน mMRC เพื่อไม่ให้ข้อความยาวเกินไป
-    pdf.cell(70, 8, txt="คะแนนความเหนื่อยหอบ (mMRC):", ln=0)
-    pdf.multi_cell(0, 8, txt=data['mmrc'])
+    # 🌟 แก้บั๊ก mMRC: ย้ายขึ้นบรรทัดใหม่เพื่อให้ได้พื้นที่หน้ากระดาษเต็มๆ และป้องกันคำล้น
+    pdf.cell(0, 8, txt="คะแนนความเหนื่อยหอบ (mMRC):", ln=True)
+    pdf.multi_cell(0, 8, txt="   " + data['mmrc'])
     
     if "COPD" in data['disease']:
         add_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
@@ -161,13 +161,13 @@ with tab2:
     with col_cur1: smoking = st.checkbox("🚬 ปัจจุบันยังสูบบุหรี่")
     with col_cur2: sputum = st.checkbox("🤧 มีเสมหะเหลือง/เขียว")
     
-    # ✨ อัปเดตรายละเอียด mMRC แบบจัดเต็ม!
+    # 🌟 แอบใส่ "ช่องว่าง (Space)" ไว้เนียนๆ ในตัวเลือก เพื่อช่วยให้ PDF ตัดบรรทัดได้ ไม่ Error ครับ
     mmrc = st.selectbox("คะแนนประเมินความเหนื่อยหอบ (mMRC Score) 🚶‍♂️", [
-        "ระดับ 0: เหนื่อยเฉพาะเวลาออกกำลังกายหนัก ๆ เท่านั้น",
-        "ระดับ 1: เหนื่อยเมื่อเดินเร็วบนทางราบ หรือเดินขึ้นเนินที่ไม่ชัน",
-        "ระดับ 2: เดินบนทางราบได้ช้ากว่าคนวัยเดียวกัน หรือต้องหยุดพักเมื่อเดินปกติ",
-        "ระดับ 3: ต้องหยุดพักหายใจหลังเดินไปได้ประมาณ 90-100 เมตร หรือเดินไม่กี่นาที",
-        "ระดับ 4: เหนื่อยมากจนไม่ออกจากบ้าน หรือเหนื่อยแม้แต่ตอนแต่งตัว/ถอดเสื้อผ้า"
+        "ระดับ 0: เหนื่อยเฉพาะเวลา ออกกำลังกายหนัก ๆ เท่านั้น",
+        "ระดับ 1: เหนื่อยเมื่อเดินเร็ว บนทางราบ หรือ เดินขึ้นเนินที่ไม่ชัน",
+        "ระดับ 2: เดินบนทางราบ ได้ช้ากว่าคนวัยเดียวกัน หรือ ต้องหยุดพักเมื่อเดินปกติ",
+        "ระดับ 3: ต้องหยุดพักหายใจ หลังเดินไปได้ประมาณ 90-100 เมตร หรือ เดินไม่กี่นาที",
+        "ระดับ 4: เหนื่อยมาก จนไม่ออกจากบ้าน หรือ เหนื่อยแม้แต่ตอนแต่งตัว / ถอดเสื้อผ้า"
     ])
 
 with tab3:
@@ -214,24 +214,22 @@ with tab5:
 with tab6:
     st.header("👨‍⚕️ สรุปผลการประเมินสำหรับแพทย์")
     
-    # ประมวลผลข้อมูล
     symptom_count = sum(1 for symp in [day_symp, night_symp, rescue_med] if not symp.startswith("0"))
     control_level = "Well Controlled (ควบคุมได้ดี)" if symptom_count == 0 else ("Partially Controlled (ควบคุมได้บางส่วน)" if symptom_count <= 2 else "Uncontrolled (ควบคุมไม่ได้)")
     risk_level = "High Risk (มีประวัติกำเริบ)" if (er_visit > 0 or admit_days > 0) else "Low Risk (ไม่มีประวัติกำเริบใน 4 สัปดาห์)"
     pct = (pre_pefr / pred_pefr * 100) if pred_pefr > 0 and pre_pefr > 0 else 0
     
-    # สร้างข้อความคำแนะนำ
+    # 🌟 แอบใส่ช่องว่างในคำแนะนำ (Suggestions) เพื่อกัน Error ภาษาไทยตอนพิมพ์ PDF
     suggestions = []
-    if adherence < 80: suggestions.append("ผู้ป่วยใช้ยาไม่สม่ำเสมอ แนะนำตรวจสอบสาเหตุและแก้ไขเทคนิคพ่นยา")
-    if not edu3: suggestions.append("ยังไม่ได้ตรวจสอบเทคนิคพ่นยา ว่าถูกต้องหรือไม่")
+    if adherence < 80: suggestions.append("ผู้ป่วยใช้ยาไม่สม่ำเสมอ แนะนำตรวจสอบสาเหตุ และ แก้ไขเทคนิคพ่นยา")
+    if not edu3: suggestions.append("ยังไม่ได้ตรวจสอบ เทคนิคพ่นยา ว่าถูกต้องหรือไม่")
     if smoking: suggestions.append("ผู้ป่วยยังสูบบุหรี่ ควรเน้นย้ำ Smoking Cessation")
     if "COPD" in disease_type and st.session_state.cat_score >= 10:
-        suggestions.append(f"CAT Score สูง ({st.session_state.cat_score}) พิจารณาปรับยา หรือทำ Pulmonary Rehab")
+        suggestions.append(f"CAT Score สูง ({st.session_state.cat_score}) พิจารณาปรับยา หรือ ทำ Pulmonary Rehab")
     if er_visit > 0 or admit_days > 0:
         suggestions.append("มีประวัติ Exacerbation พิจารณา Step-up Therapy หรือ ICS/Oral Steroid")
-    if not suggestions: suggestions.append("แนะนำให้การรักษาเดิม (Maintain current therapy) และติดตามอาการตามนัด")
+    if not suggestions: suggestions.append("แนะนำให้การรักษาเดิม (Maintain current therapy) และ ติดตามอาการตามนัด")
     
-    # แสดงผลบนหน้าจอ
     st.subheader(f"1. ระดับการควบคุม: {control_level}")
     st.subheader(f"2. ประวัติกำเริบ: {risk_level}")
     st.subheader("3. คำแนะนำ (Clinical Suggestions):")
@@ -257,7 +255,6 @@ with tab6:
         "o2_sat": o2_sat
     }
     
-    # ตั้งชื่อไฟล์ PDF ตาม HN
     filename_hn = hn.strip() if hn.strip() != "" else "No_HN"
     export_filename = f"Report_Asthma_COPD_HN_{filename_hn}.pdf"
     
