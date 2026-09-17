@@ -457,9 +457,7 @@ def generate_pdf_report(data):
         tmp_file.name
     )
 
-    return tmp_file.name
-
-    class PDF(FPDF):
+        class PDF(FPDF):
 
         def footer(self):
             self.set_y(-10)
@@ -476,6 +474,7 @@ def generate_pdf_report(data):
                 border=0,
                 align="L"
             )
+    return tmp_file.name
 
 # ==========================================
 # UI หน้าเว็บหลัก
