@@ -451,7 +451,7 @@ def generate_pdf_report(data):
 
     pdf.set_xy(
         pdf.l_margin,
-        pdf.h - 10
+        pdf.h - 6
     )
     
     pdf.cell(
