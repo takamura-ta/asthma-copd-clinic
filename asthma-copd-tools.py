@@ -457,20 +457,22 @@ def generate_pdf_report(data):
         tmp_file.name
     )
 
-    class PDF(FPDF):
-        def footer(self):
-            self.set_y(-10)
-            self.set_font(
-                "THSarabunNew",
-                size=9
-            )
-            self.cell(
-                0,
-                5,
-                "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
-                border=0,
-                align="L"
-            )
+    def footer(self):
+        self.set_y(-10)
+
+        self.set_font(
+            "THSarabunNew",
+            size=9
+        )
+
+        self.cell(
+            0,
+            5,
+            "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
+            border=0,
+            align="L"
+        )
+
     return tmp_file.name
 
 # ==========================================
