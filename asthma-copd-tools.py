@@ -14,6 +14,25 @@ def calculate_predicted_pefr(age, height, sex):
         pefr = (9.726 * age) - (0.05037 * (age**2)) + (23.622 * height) - (0.05987 * (height**2)) - (0.04323 * age * height) - 1895.5
     return max(0, round(pefr))
 
+# --- 📄 คลาสสร้างไฟล์ PDF พร้อม Custom Footer ---
+class PDFReport(FPDF):
+    def footer(self):
+        # ตำแหน่งจากขอบล่างขึ้นมา 10 มม.
+        self.set_y(-10)
+        
+        # ตรวจสอบฟอนต์ภาษาไทย
+        font_name = "THSarabunNew" if os.path.exists("THSarabunNew.ttf") else "Arial"
+        self.set_font(font_name, size=9)
+        
+        # แสดงข้อความ Footer ชิดซ้าย
+        self.cell(
+            0,
+            5,
+            "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
+            border=0,
+            align="L"
+        )
+
 # --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 ---
 def generate_pdf_report(data):
     from fpdf import FPDF
@@ -456,23 +475,6 @@ def generate_pdf_report(data):
     pdf.output(
         tmp_file.name
     )
-
-    def footer(self):
-        self.set_y(-10)
-
-        self.set_font(
-            "THSarabunNew",
-            size=9
-        )
-
-        self.cell(
-            0,
-            5,
-            "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
-            border=0,
-            align="L"
-        )
-
     return tmp_file.name
 
 # ==========================================
