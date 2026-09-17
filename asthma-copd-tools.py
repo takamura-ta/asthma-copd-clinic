@@ -38,7 +38,7 @@ def generate_pdf_report(data):
 
     pdf.set_auto_page_break(
         auto=True,
-        margin=12
+        margin=18
     )
 
     pdf.add_page()
@@ -447,11 +447,8 @@ def generate_pdf_report(data):
     # 12.5 FOOTER
     # ==========================================
     
-    set_font(10)
-    
-    footer_text = "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569"
-    
-    # กำหนดตำแหน่ง footer ด้านซ้าย
+    set_font(9)
+
     pdf.set_xy(
         pdf.l_margin,
         pdf.h - 10
@@ -460,7 +457,7 @@ def generate_pdf_report(data):
     pdf.cell(
         w=PAGE_WIDTH,
         h=5,
-        text=footer_text,
+        text="ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
         border=0,
         align="L"
     )
