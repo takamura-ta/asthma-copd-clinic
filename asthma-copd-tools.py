@@ -43,18 +43,38 @@ def generate_pdf_report(data):
     
     # 🛡️ ฟังก์ชันช่วยพิมพ์ข้อมูลแบบปลอดภัย (ใช้ฟอนต์ปกติทั้งหมด ป้องกัน Error ตัวหนา)
     def add_secure_row(label, value):
-    font_name = "THSarabunNew" if has_thai_font else "Arial"
-
-    # Font
-    pdf.set_font(font_name, size=16)
-
-    # Label
-    pdf.cell(
-        65,
-        7,
-        txt=str(label),
-        border=0
-    )
+        font_name = "THSarabunNew" if has_thai_font else "Arial"
+    
+        # Font
+        pdf.set_font(font_name, size=16)
+    
+        # Label
+        pdf.cell(
+            65,
+            7,
+            txt=str(label),
+            border=0
+        )
+    
+        # คำนวณพื้นที่เหลือ
+        remaining_width = pdf.w - pdf.r_margin - pdf.get_x()
+    
+        # ป้องกัน width ติดลบ/เป็นศูนย์
+        if remaining_width <= 5:
+            pdf.ln(7)
+            pdf.multi_cell(
+                pdf.w - pdf.l_margin - pdf.r_margin,
+                7,
+                txt=str(value),
+                wrapmode="CHAR"
+            )
+        else:
+            pdf.multi_cell(
+                remaining_width,
+                7,
+                txt=str(value),
+                wrapmode="CHAR"
+            )
 
     # คำนวณพื้นที่เหลือ
     remaining_width = pdf.w - pdf.r_margin - pdf.get_x()
