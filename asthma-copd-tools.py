@@ -451,12 +451,12 @@ def generate_pdf_report(data):
 
     pdf.set_xy(
         pdf.l_margin,
-        pdf.h - 6
+        pdf.h - 10
     )
     
     pdf.cell(
         w=PAGE_WIDTH,
-        h=5,
+        h=1,
         text="ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
         border=0,
         align="L"
