@@ -457,16 +457,13 @@ def generate_pdf_report(data):
         tmp_file.name
     )
 
-        class PDF(FPDF):
-
+    class PDF(FPDF):
         def footer(self):
             self.set_y(-10)
-    
             self.set_font(
                 "THSarabunNew",
                 size=9
             )
-    
             self.cell(
                 0,
                 5,
