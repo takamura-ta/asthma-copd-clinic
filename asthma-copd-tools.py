@@ -24,7 +24,7 @@ def generate_pdf_report(data):
     # ==========================================
     # 1. สร้าง PDF A4
     # ==========================================
-    pdf = FPD(
+    pdf = FPDF(
         orientation="P",
         unit="mm",
         format="A4"
