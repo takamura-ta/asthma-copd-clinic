@@ -217,7 +217,7 @@ def generate_pdf_report(data):
     # 7. HEADER
     # ==========================================
     set_font(21)
-
+    
     pdf.multi_cell(
         w=PAGE_WIDTH,
         h=8,
@@ -228,19 +228,31 @@ def generate_pdf_report(data):
         new_y=YPos.NEXT,
         wrapmode="CHAR"
     )
-
-    # เส้นใต้ header
+    
+    set_font(16)
+    
+    pdf.multi_cell(
+        w=PAGE_WIDTH,
+        h=7,
+        text="คลินิกโรคปอด โรงพยาบาลวานรนิวาส",
+        border=0,
+        align="C",
+        new_x=XPos.LMARGIN,
+        new_y=YPos.NEXT,
+        wrapmode="CHAR"
+    )
+    
+    # เส้นใต้ Header
     y = pdf.get_y()
-
+    
     pdf.line(
         pdf.l_margin,
         y,
         pdf.w - pdf.r_margin,
         y
     )
-
+    
     pdf.ln(3)
-
     # ==========================================
     # 8. Patient Information
     # ==========================================
@@ -429,6 +441,28 @@ def generate_pdf_report(data):
         new_x=XPos.LMARGIN,
         new_y=YPos.NEXT,
         wrapmode="CHAR"
+    )
+
+    # ==========================================
+    # 12.5 FOOTER
+    # ==========================================
+    
+    set_font(10)
+    
+    footer_text = "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569"
+    
+    # กำหนดตำแหน่ง footer ด้านซ้าย
+    pdf.set_xy(
+        pdf.l_margin,
+        pdf.h - 10
+    )
+    
+    pdf.cell(
+        w=PAGE_WIDTH,
+        h=5,
+        text=footer_text,
+        border=0,
+        align="L"
     )
 
     # ==========================================
