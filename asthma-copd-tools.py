@@ -39,23 +39,49 @@ def generate_pdf_report(data):
         pdf.set_font("Arial", size=12)
         
     pdf.line(10, 25, 200, 25)
-    pdf.ln(10)
+    pdf.ln(8)
     
     # ฟังก์ชันช่วยเขียนข้อมูลเป็นบรรทัด
-    def add_row(label, value):
-        pdf.cell(70, 8, txt=label, ln=0)
+    def add_row(label, value, label_w=70):
+        pdf.cell(label_w, 8, txt=label, ln=0)
         pdf.cell(0, 8, txt=str(value), ln=True)
         
     # 2. ข้อมูลผู้ป่วย
+    add_row("เลขประจำตัวผู้ป่วย (HN):", data['hn'] if data['hn'] else "- ไม่ระบุ -")
     add_row("ประเภทโรค (Disease):", data['disease'])
     add_row("อายุ (Age):", f"{data['age']} ปี")
     add_row("เพศ (Sex):", data['sex'])
-    add_row("ดัชนีมวลกาย (BMI):", f"{data['bmi']:.1f}")
     add_row("ค่าเป้าหมายปอด (Predicted PEFR):", f"{data['pred_pefr']} L/min")
     
     pdf.ln(5)
     
-    # 3. ผลการประเมิน
+    # 3. ข้อมูลการประเมินอาการและการทดสอบ (Symptoms & Tests)
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
+    pdf.cell(0, 8, "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests):", ln=True)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    
+    if has_thai_font: pdf.set_font("THSarabunNew", size=16)
+    
+    # สรุปอาการ 4 สัปดาห์คร่าวๆ
+    add_row("อาการกลางวัน / กลางคืน:", f"{data['day_symp'].split('-')[1].strip()} / {data['night_symp'].split('-')[1].strip()}")
+    add_row("ประวัติเข้า ER หรือ Admit:", f"ER {data['er_visit']} ครั้ง / Admit {data['admit_days']} วัน")
+    add_row("ประวัติการสูบบุหรี่ (Smoking):", data['smoking'])
+    add_row("ลักษณะเสมหะ (Sputum):", data['sputum'])
+    
+    # แยกส่วน mMRC เพื่อไม่ให้ข้อความยาวเกินไป
+    pdf.cell(70, 8, txt="คะแนนความเหนื่อยหอบ (mMRC):", ln=0)
+    pdf.multi_cell(0, 8, txt=data['mmrc'])
+    
+    if "COPD" in data['disease']:
+        add_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
+        
+    add_row("ระยะทางเดิน 6 นาที (6MWT):", f"{data['walk_dist']} เมตร")
+    add_row("ออกซิเจนในเลือด (SpO2 Room Air):", f"{data['o2_sat']} %")
+    
+    pdf.ln(5)
+    
+    # 4. ผลการประเมินทางคลินิก
     if has_thai_font: pdf.set_font("THSarabunNew", size=18)
     pdf.cell(0, 8, "ผลการประเมินทางคลินิก (Clinical Assessment):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -64,15 +90,12 @@ def generate_pdf_report(data):
     if has_thai_font: pdf.set_font("THSarabunNew", size=16)
     add_row("ระดับการควบคุมโรค (Control Level):", data['control'])
     add_row("ความเสี่ยงกำเริบ (Exacerbation Risk):", data['risk'])
-    add_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data['pct_pred']:.1f}%")
+    add_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data['pct_pred']:.1f}% (เป่าได้ {data['pre_pefr']} L/min)")
     add_row("ความร่วมมือในการใช้ยา (Adherence):", f"{data['adherence']}%")
-    
-    if "COPD" in data['disease']:
-        add_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
         
     pdf.ln(5)
     
-    # 4. คำแนะนำสำหรับแพทย์
+    # 5. คำแนะนำสำหรับแพทย์
     if has_thai_font: pdf.set_font("THSarabunNew", size=18)
     pdf.cell(0, 8, "สรุปและคำแนะนำ (Doctor's Summary & Suggestions):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -80,10 +103,9 @@ def generate_pdf_report(data):
     
     if has_thai_font: pdf.set_font("THSarabunNew", size=16)
     for sug in data['suggestions']:
-        # ใช้ multi_cell เพื่อให้ข้อความยาวๆ ขึ้นบรรทัดใหม่ได้อัตโนมัติ
         pdf.multi_cell(0, 8, txt=f"- {sug}")
         
-    pdf.ln(20)
+    pdf.ln(15)
     pdf.cell(0, 8, "ลงชื่อผู้ประเมิน.......................................................", align="R", ln=True)
     pdf.cell(0, 8, "วันที่........./........./.........", align="R", ln=True)
     
@@ -100,7 +122,7 @@ st.markdown("ระบบบันทึกและประเมินผล�
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "👤 1. ข้อมูลทั่วไป", "🗣️ 2. ประเมินอาการ", "🫁 3. สมรรถภาพปอด", 
-    "💊 4. การใช้ยา", "📊 5. CAT Score (COPD)", "👨‍⚕️ สรุปสำหรับแพทย์"
+    "💊 4. การใช้ยา", "📊 5. CAT Score", "👨‍⚕️ สรุปสำหรับแพทย์"
 ])
 
 if 'cat_score' not in st.session_state: st.session_state.cat_score = 0
@@ -109,6 +131,7 @@ with tab1:
     st.header("👤 ส่วนที่ 1: ข้อมูลทั่วไปและสัญญาณชีพ")
     col1, col2, col3 = st.columns(3)
     with col1:
+        hn = st.text_input("เลขประจำตัวผู้ป่วย (HN) 🆔", placeholder="กรอกเลข HN เช่น 123456")
         disease_type = st.radio("ประเภทโรค 📌", ["Asthma (โรคหืด)", "COPD (ปอดอุดกั้นเรื้อรัง)", "Asthma-COPD Overlap"])
         age = st.number_input("อายุ (ปี) 🎂", min_value=15, max_value=120, value=60)
         sex = st.radio("เพศ 🚻", ["ชาย", "หญิง"])
@@ -127,13 +150,25 @@ with tab2:
     day_symp = st.selectbox("☀️ อาการหอบ/ไอ กลางวัน", ["0 - ไม่มี", "1 - < 1 ครั้ง/สัปดาห์", "2 - >= 1 ครั้ง/สัปดาห์", "3 - ทุกวัน", "4 - เกือบตลอดเวลา"])
     night_symp = st.selectbox("🌙 อาการหอบ/ไอ กลางคืน", ["0 - ไม่มี", "1 - <= 2 ครั้ง/เดือน", "2 - > 2 ครั้ง/เดือน", "3 - > 1 ครั้ง/สัปดาห์", "4 - เกือบทุกวัน"])
     rescue_med = st.selectbox("💊 การใช้ยาบรรเทาอาการฉุกเฉิน", ["0 - ไม่มี", "1 - < 1 ครั้ง/สัปดาห์", "2 - เกือบทุกวัน", "3 - ทุกวัน", "4 - > 4 ครั้ง/วัน ติดต่อกัน >=2 วัน"])
+    
+    st.subheader("ประวัติกำเริบ (Exacerbation)")
     col_ex1, col_ex2 = st.columns(2)
-    with col_ex1: er_visit = st.number_input("🚑 ครั้งที่ไป ER (ครั้ง)", min_value=0, value=0)
-    with col_ex2: admit_days = st.number_input("🏥 วันที่ Admit (วัน)", min_value=0, value=0)
-    col_cur1, col_cur2, col_cur3 = st.columns(3)
+    with col_ex1: er_visit = st.number_input("🚑 จำนวนครั้งที่ไป ER (ครั้ง)", min_value=0, value=0)
+    with col_ex2: admit_days = st.number_input("🏥 จำนวนวันที่ Admit (วัน)", min_value=0, value=0)
+    
+    st.subheader("อาการปัจจุบัน")
+    col_cur1, col_cur2 = st.columns(2)
     with col_cur1: smoking = st.checkbox("🚬 ปัจจุบันยังสูบบุหรี่")
     with col_cur2: sputum = st.checkbox("🤧 มีเสมหะเหลือง/เขียว")
-    with col_cur3: mmrc = st.selectbox("เหนื่อยหอบ (mMRC)", ["0", "1", "2", "3", "4"])
+    
+    # ✨ อัปเดตรายละเอียด mMRC แบบจัดเต็ม!
+    mmrc = st.selectbox("คะแนนประเมินความเหนื่อยหอบ (mMRC Score) 🚶‍♂️", [
+        "ระดับ 0: เหนื่อยเฉพาะเวลาออกกำลังกายหนัก ๆ เท่านั้น",
+        "ระดับ 1: เหนื่อยเมื่อเดินเร็วบนทางราบ หรือเดินขึ้นเนินที่ไม่ชัน",
+        "ระดับ 2: เดินบนทางราบได้ช้ากว่าคนวัยเดียวกัน หรือต้องหยุดพักเมื่อเดินปกติ",
+        "ระดับ 3: ต้องหยุดพักหายใจหลังเดินไปได้ประมาณ 90-100 เมตร หรือเดินไม่กี่นาที",
+        "ระดับ 4: เหนื่อยมากจนไม่ออกจากบ้าน หรือเหนื่อยแม้แต่ตอนแต่งตัว/ถอดเสื้อผ้า"
+    ])
 
 with tab3:
     st.header("🫁 ส่วนที่ 3: สมรรถภาพปอด (Lung Function & 6MWT)")
@@ -148,8 +183,8 @@ with tab3:
             else: st.error(f"🔴 % Predicted: {pct_pred:.1f}% (อันตราย)")
     with col_lung2:
         walk_dist = st.number_input("ระยะเดิน 6 นาที (เมตร)", min_value=0, value=0)
-        o2_sat = st.number_input("O2 Saturation (%)", min_value=0, max_value=100, value=98)
-        if o2_sat < 90 and o2_sat > 0: st.error("🚨 ระวัง! O2 Sat Drop")
+        o2_sat = st.number_input("O2 Saturation Room Air (%)", min_value=0, max_value=100, value=98)
+        if o2_sat < 90 and o2_sat > 0: st.error("🚨 ระวัง! SpO2 Room Air ต่ำกว่า 90%")
 
 with tab4:
     st.header("💊 ส่วนที่ 4: การใช้ยาและความร่วมมือ")
@@ -163,7 +198,7 @@ with tab4:
 with tab5:
     st.header("📊 ส่วนที่ 5: CAT Score (สำหรับ COPD)")
     if "COPD" not in disease_type:
-        st.info("ℹ️ ผู้ป่วย Asthma ข้ามแท็บนี้ได้เลยครับ")
+        st.info("ℹ️ ผู้ป่วยรายนี้เป็น Asthma ไม่จำเป็นต้องประเมิน CAT Score (ข้ามได้เลยครับ)")
     else:
         cat1 = st.slider("1. ไอ", 0, 5, 0)
         cat2 = st.slider("2. เสมหะ", 0, 5, 0)
@@ -205,15 +240,27 @@ with tab6:
     st.markdown("---")
     st.subheader("📄 ส่งออกรายงาน (Export Report)")
     
-    # เตรียมข้อมูลส่งเข้าฟังก์ชัน PDF
+    # 📦 เตรียมข้อมูลส่งเข้าฟังก์ชัน PDF แบบจัดเต็ม
     report_data = {
+        "hn": hn,
         "disease": disease_type, "age": age, "sex": sex, "bmi": bmi,
         "pred_pefr": pred_pefr, "control": control_level, "risk": risk_level,
-        "pct_pred": pct, "adherence": adherence, "cat": st.session_state.cat_score,
-        "suggestions": suggestions
+        "pre_pefr": pre_pefr, "pct_pred": pct, "adherence": adherence, 
+        "cat": st.session_state.cat_score,
+        "suggestions": suggestions,
+        "day_symp": day_symp, "night_symp": night_symp, "rescue_med": rescue_med,
+        "er_visit": er_visit, "admit_days": admit_days,
+        "smoking": "สูบบุหรี่ 🚬" if smoking else "ไม่สูบ",
+        "sputum": "มีเสมหะเหลือง/เขียว 🤧" if sputum else "ไม่มี",
+        "mmrc": mmrc,
+        "walk_dist": walk_dist,
+        "o2_sat": o2_sat
     }
     
-    # ปุ่มกดสร้าง PDF
+    # ตั้งชื่อไฟล์ PDF ตาม HN
+    filename_hn = hn.strip() if hn.strip() != "" else "No_HN"
+    export_filename = f"Report_Asthma_COPD_HN_{filename_hn}.pdf"
+    
     if st.button("🖨️ สร้างและดาวน์โหลดไฟล์ PDF (A4)", type="primary"):
         with st.spinner("กำลังจัดหน้ากระดาษและสร้าง PDF... ⏳"):
             try:
@@ -224,11 +271,11 @@ with tab6:
                 
                 with open(pdf_path, "rb") as pdf_file:
                     st.download_button(
-                        label="📥 คลิกที่นี่เพื่อดาวน์โหลด PDF",
+                        label=f"📥 คลิกที่นี่เพื่อดาวน์โหลด (ชื่อไฟล์: {export_filename})",
                         data=pdf_file,
-                        file_name=f"Report_Asthma_COPD.pdf",
+                        file_name=export_filename,
                         mime="application/pdf"
                     )
-                st.success("✅ สร้างไฟล์ PDF สำเร็จแล้ว!")
+                st.success(f"✅ สร้างไฟล์ {export_filename} สำเร็จแล้ว!")
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาด: {e}")
