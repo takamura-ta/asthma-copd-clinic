@@ -14,7 +14,7 @@ def calculate_predicted_pefr(age, height, sex):
         pefr = (9.726 * age) - (0.05037 * (age**2)) + (23.622 * height) - (0.05987 * (height**2)) - (0.04323 * age * height) - 1895.5
     return max(0, round(pefr))
 
-# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 (เวอร์ชันปลอดภัย ป้องกัน Error พื้นที่) ---
+# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 (เวอร์ชันแก้ไขเรื่องฟอนต์ตัวหนา) ---
 def generate_pdf_report(data):
     pdf = FPDF(format='A4')
     pdf.add_page()
@@ -41,11 +41,10 @@ def generate_pdf_report(data):
     pdf.line(10, 25, 200, 25)
     pdf.ln(5)
     
-    # 🛡️ ฟังก์ชันช่วยพิมพ์ข้อมูลแบบปลอดภัย ป้องกันข้อความล้นและ Error พื้นที่
+    # 🛡️ ฟังก์ชันช่วยพิมพ์ข้อมูลแบบปลอดภัย (ใช้ฟอนต์ปกติทั้งหมด ป้องกัน Error ตัวหนา)
     def add_secure_row(label, value):
-        pdf.set_font("THSarabunNew" if has_thai_font else "Arial", size=16, style='B' if has_thai_font else '')
-        pdf.cell(65, 7, txt=label, ln=0)
         pdf.set_font("THSarabunNew" if has_thai_font else "Arial", size=16)
+        pdf.cell(65, 7, txt=label, ln=0)
         pdf.multi_cell(0, 7, txt=str(value))
         
     # 2. ข้อมูลผู้ป่วย
@@ -57,7 +56,7 @@ def generate_pdf_report(data):
     pdf.ln(3)
     
     # 3. ข้อมูลการประเมินอาการและการทดสอบ
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18, style='B')
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
     pdf.cell(0, 7, "ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(2)
@@ -77,7 +76,7 @@ def generate_pdf_report(data):
     pdf.ln(3)
     
     # 4. ผลการประเมินทางคลินิก
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18, style='B')
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
     pdf.cell(0, 7, "ผลการประเมินทางคลินิก (Clinical Assessment):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(2)
@@ -90,7 +89,7 @@ def generate_pdf_report(data):
     pdf.ln(3)
     
     # 5. คำแนะนำสำหรับแพทย์
-    if has_thai_font: pdf.set_font("THSarabunNew", size=18, style='B')
+    if has_thai_font: pdf.set_font("THSarabunNew", size=18)
     pdf.cell(0, 7, "สรุปและคำแนะนำ (Doctor's Summary & Suggestions):", ln=True)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(2)
