@@ -16,8 +16,8 @@ def calculate_predicted_pefr(age, height, sex):
 
 # --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 (เวอร์ชันแก้ไขเรื่องฟอนต์ตัวหนา) ---
 def generate_pdf_report(data):
-    pdf = FPDF(orientation="P", unit="mm", format="A4")
-    pdf.set_margins(left=10, top=15, right=10)
+    pdf = FPDF(format='A4')
+    pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
     # ตรวจสอบและโหลดฟอนต์ภาษาไทย
@@ -43,58 +43,9 @@ def generate_pdf_report(data):
     
     # 🛡️ ฟังก์ชันช่วยพิมพ์ข้อมูลแบบปลอดภัย (ใช้ฟอนต์ปกติทั้งหมด ป้องกัน Error ตัวหนา)
     def add_secure_row(label, value):
-        font_name = "THSarabunNew" if has_thai_font else "Arial"
-    
-        # Font
-        pdf.set_font(font_name, size=16)
-    
-        # Label
-        pdf.cell(
-            65,
-            7,
-            txt=str(label),
-            border=0
-        )
-    
-        # คำนวณพื้นที่เหลือ
-        remaining_width = pdf.w - pdf.r_margin - pdf.get_x()
-    
-        # ป้องกัน width ติดลบ/เป็นศูนย์
-        if remaining_width <= 5:
-            pdf.ln(7)
-            pdf.multi_cell(
-                pdf.w - pdf.l_margin - pdf.r_margin,
-                7,
-                txt=str(value),
-                wrapmode="CHAR"
-            )
-        else:
-            pdf.multi_cell(
-                remaining_width,
-                7,
-                txt=str(value),
-                wrapmode="CHAR"
-            )
-
-    # คำนวณพื้นที่เหลือ
-    remaining_width = pdf.w - pdf.r_margin - pdf.get_x()
-
-    # ป้องกัน width ติดลบ/เป็นศูนย์
-    if remaining_width <= 5:
-        pdf.ln(7)
-        pdf.multi_cell(
-            pdf.w - pdf.l_margin - pdf.r_margin,
-            7,
-            txt=str(value),
-            wrapmode="CHAR"
-        )
-    else:
-        pdf.multi_cell(
-            remaining_width,
-            7,
-            txt=str(value),
-            wrapmode="CHAR"
-        )
+        pdf.set_font("THSarabunNew" if has_thai_font else "Arial", size=16)
+        pdf.cell(65, 7, txt=label, ln=0)
+        pdf.multi_cell(0, 7, txt=str(value))
         
     # 2. ข้อมูลผู้ป่วย
     add_secure_row("เลขประจำตัวผู้ป่วย (HN):", data['hn'] if data['hn'] else "- ไม่ระบุ -")
@@ -145,12 +96,7 @@ def generate_pdf_report(data):
     
     if has_thai_font: pdf.set_font("THSarabunNew", size=16)
     for sug in data['suggestions']:
-    pdf.multi_cell(
-        pdf.w - pdf.l_margin - pdf.r_margin,
-        7,
-        txt=f"- {sug}",
-        wrapmode="CHAR"
-    )
+        pdf.multi_cell(0, 7, txt=f"- {sug}")
         
     pdf.ln(10)
     pdf.cell(0, 7, "ลงชื่อผู้ประเมิน.......................................................", align="R", ln=True)
@@ -204,8 +150,8 @@ with tab2:
     
     st.subheader("อาการปัจจุบัน")
     col_cur1, col_cur2 = st.columns(2)
-    with col_cur1: smoking = st.checkbox("ปัจจุบันยังสูบบุหรี่")
-    with col_cur2: sputum = st.checkbox("มีเสมหะเหลือง/เขียว")
+    with col_cur1: smoking = st.checkbox("🚬 ปัจจุบันยังสูบบุหรี่")
+    with col_cur2: sputum = st.checkbox("🤧 มีเสมหะเหลือง/เขียว")
     
     mmrc_options = [
         "ระดับ 0: เหนื่อยเฉพาะเวลาออกกำลังกายหนัก ๆ เท่านั้น",
