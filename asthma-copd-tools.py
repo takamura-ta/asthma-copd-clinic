@@ -69,9 +69,8 @@ def generate_pdf_report(data):
     add_row("ประวัติการสูบบุหรี่ (Smoking):", data['smoking'])
     add_row("ลักษณะเสมหะ (Sputum):", data['sputum'])
     
-    # 🌟 แก้บั๊ก mMRC: ย้ายขึ้นบรรทัดใหม่เพื่อให้ได้พื้นที่หน้ากระดาษเต็มๆ และป้องกันคำล้น
-    pdf.cell(0, 8, txt="คะแนนความเหนื่อยหอบ (mMRC):", ln=True)
-    pdf.multi_cell(0, 8, txt="   " + data['mmrc'])
+    # 🌟 ดึงมาเฉพาะคะแนน mMRC สั้นๆ ป้องกัน Error พื้นที่ใน PDF ไม่พอ
+    add_row("คะแนนความเหนื่อยหอบ (mMRC Score):", data['mmrc'])
     
     if "COPD" in data['disease']:
         add_row("คะแนน CAT Score:", f"{data['cat']} คะแนน")
@@ -161,14 +160,18 @@ with tab2:
     with col_cur1: smoking = st.checkbox("🚬 ปัจจุบันยังสูบบุหรี่")
     with col_cur2: sputum = st.checkbox("🤧 มีเสมหะเหลือง/เขียว")
     
-    # 🌟 แอบใส่ "ช่องว่าง (Space)" ไว้เนียนๆ ในตัวเลือก เพื่อช่วยให้ PDF ตัดบรรทัดได้ ไม่ Error ครับ
-    mmrc = st.selectbox("คะแนนประเมินความเหนื่อยหอบ (mMRC Score) 🚶‍♂️", [
-        "ระดับ 0: เหนื่อยเฉพาะเวลา ออกกำลังกายหนัก ๆ เท่านั้น",
-        "ระดับ 1: เหนื่อยเมื่อเดินเร็ว บนทางราบ หรือ เดินขึ้นเนินที่ไม่ชัน",
-        "ระดับ 2: เดินบนทางราบ ได้ช้ากว่าคนวัยเดียวกัน หรือ ต้องหยุดพักเมื่อเดินปกติ",
-        "ระดับ 3: ต้องหยุดพักหายใจ หลังเดินไปได้ประมาณ 90-100 เมตร หรือ เดินไม่กี่นาที",
-        "ระดับ 4: เหนื่อยมาก จนไม่ออกจากบ้าน หรือ เหนื่อยแม้แต่ตอนแต่งตัว / ถอดเสื้อผ้า"
-    ])
+    # หน้าจอเว็บมีคำอธิบายครบถ้วนให้พยาบาลอ่านง่าย
+    mmrc_options = [
+        "ระดับ 0: เหนื่อยเฉพาะเวลาออกกำลังกายหนัก ๆ เท่านั้น",
+        "ระดับ 1: เหนื่อยเมื่อเดินเร็วบนทางราบ หรือเดินขึ้นเนินที่ไม่ชัน",
+        "ระดับ 2: เดินบนทางราบได้ช้ากว่าคนวัยเดียวกัน หรือต้องหยุดพักเมื่อเดินปกติ",
+        "ระดับ 3: ต้องหยุดพักหายใจหลังเดินไปได้ประมาณ 90-100 เมตร หรือเดินไม่กี่นาที",
+        "ระดับ 4: เหนื่อยมากจนไม่ออกจากบ้าน หรือเหนื่อยแม้แต่ตอนแต่งตัว/ถอดเสื้อผ้า"
+    ]
+    mmrc_selected = st.selectbox("คะแนนประเมินความเหนื่อยหอบ (mMRC Score) 🚶‍♂️", mmrc_options)
+    
+    # ตัดเอาเฉพาะคะแนนสั้นๆ (เช่น "ระดับ 0") ไปใช้ใน PDF
+    mmrc_score_only = mmrc_selected.split(":")[0]
 
 with tab3:
     st.header("🫁 ส่วนที่ 3: สมรรถภาพปอด (Lung Function & 6MWT)")
@@ -219,16 +222,15 @@ with tab6:
     risk_level = "High Risk (มีประวัติกำเริบ)" if (er_visit > 0 or admit_days > 0) else "Low Risk (ไม่มีประวัติกำเริบใน 4 สัปดาห์)"
     pct = (pre_pefr / pred_pefr * 100) if pred_pefr > 0 and pre_pefr > 0 else 0
     
-    # 🌟 แอบใส่ช่องว่างในคำแนะนำ (Suggestions) เพื่อกัน Error ภาษาไทยตอนพิมพ์ PDF
     suggestions = []
-    if adherence < 80: suggestions.append("ผู้ป่วยใช้ยาไม่สม่ำเสมอ แนะนำตรวจสอบสาเหตุ และ แก้ไขเทคนิคพ่นยา")
-    if not edu3: suggestions.append("ยังไม่ได้ตรวจสอบ เทคนิคพ่นยา ว่าถูกต้องหรือไม่")
+    if adherence < 80: suggestions.append("ผู้ป่วยใช้ยาไม่สม่ำเสมอ แนะนำตรวจสอบสาเหตุและแก้ไขเทคนิคพ่นยา")
+    if not edu3: suggestions.append("ยังไม่ได้ตรวจสอบเทคนิคพ่นยา ว่าถูกต้องหรือไม่")
     if smoking: suggestions.append("ผู้ป่วยยังสูบบุหรี่ ควรเน้นย้ำ Smoking Cessation")
     if "COPD" in disease_type and st.session_state.cat_score >= 10:
-        suggestions.append(f"CAT Score สูง ({st.session_state.cat_score}) พิจารณาปรับยา หรือ ทำ Pulmonary Rehab")
+        suggestions.append(f"CAT Score สูง ({st.session_state.cat_score}) พิจารณาปรับยา หรือทำ Pulmonary Rehab")
     if er_visit > 0 or admit_days > 0:
         suggestions.append("มีประวัติ Exacerbation พิจารณา Step-up Therapy หรือ ICS/Oral Steroid")
-    if not suggestions: suggestions.append("แนะนำให้การรักษาเดิม (Maintain current therapy) และ ติดตามอาการตามนัด")
+    if not suggestions: suggestions.append("แนะนำให้การรักษาเดิม (Maintain current therapy) และติดตามอาการตามนัด")
     
     st.subheader(f"1. ระดับการควบคุม: {control_level}")
     st.subheader(f"2. ประวัติกำเริบ: {risk_level}")
@@ -238,7 +240,7 @@ with tab6:
     st.markdown("---")
     st.subheader("📄 ส่งออกรายงาน (Export Report)")
     
-    # 📦 เตรียมข้อมูลส่งเข้าฟังก์ชัน PDF แบบจัดเต็ม
+    # 📦 ส่งเฉพาะ mmrc_score_only เข้าไปใน PDF
     report_data = {
         "hn": hn,
         "disease": disease_type, "age": age, "sex": sex, "bmi": bmi,
@@ -250,7 +252,7 @@ with tab6:
         "er_visit": er_visit, "admit_days": admit_days,
         "smoking": "สูบบุหรี่ 🚬" if smoking else "ไม่สูบ",
         "sputum": "มีเสมหะเหลือง/เขียว 🤧" if sputum else "ไม่มี",
-        "mmrc": mmrc,
+        "mmrc": mmrc_score_only, # ส่งเฉพาะคะแนนสั้นๆ (เช่น ระดับ 0)
         "walk_dist": walk_dist,
         "o2_sat": o2_sat
     }
