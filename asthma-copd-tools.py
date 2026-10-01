@@ -1,8 +1,4 @@
 import streamlit as st
-from fpdf import FPDF
-from fpdf.enums import XPos, YPos
-import tempfile
-import os
 
 # --- ⚙️ การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Asthma/COPD Follow-up Dashboard", layout="wide")
@@ -15,183 +11,11 @@ def calculate_predicted_pefr(age, height, sex):
         pefr = (9.726 * age) - (0.05037 * (age**2)) + (23.622 * height) - (0.05987 * (height**2)) - (0.04323 * age * height) - 1895.5
     return max(0, round(pefr))
 
-# --- 📄 คลาสสร้างไฟล์ PDF พร้อม Custom Footer ---
-class PDFReport(FPDF):
-    def footer(self):
-        # ตำแหน่งจากขอบล่างขึ้นมา 10 มม.
-        self.set_y(-10)
-        
-        # ตรวจสอบฟอนต์ภาษาไทย
-        font_name = "THSarabunNew" if os.path.exists("THSarabunNew.ttf") else "Arial"
-        self.set_font(font_name, size=9)
-        
-        # แสดงข้อความ Footer ชิดซ้าย
-        self.cell(
-            0,
-            5,
-            "ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569",
-            border=0,
-            align="L"
-        )
-
-# --- 📄 ฟังก์ชันสร้างไฟล์ PDF ขนาด A4 ---
-def generate_pdf_report(data):
-    pdf = PDFReport(orientation="P", unit="mm", format="A4")
-    pdf.set_margins(left=10, top=12, right=10)
-    pdf.set_auto_page_break(auto=True, margin=18)
-    pdf.add_page()
-    
-    # โหลดฟอนต์ภาษาไทย
-    font_path = "THSarabunNew.ttf"
-    has_thai_font = os.path.exists(font_path)
-    
-    if has_thai_font:
-        pdf.add_font("THSarabunNew", fname=font_path)
-        font_name = "THSarabunNew"
-    else:
-        font_name = "Arial"
-        
-    def set_font(size=16):
-        pdf.set_font(font_name, size=size)
-        
-    PAGE_WIDTH = pdf.w - pdf.l_margin - pdf.r_margin
-    LABEL_WIDTH = 65
-    VALUE_WIDTH = PAGE_WIDTH - LABEL_WIDTH
-    
-    # Helper: section title
-    def add_section_title(title):
-        set_font(17)
-        pdf.multi_cell(
-            w=PAGE_WIDTH, h=6, text=str(title), border=0, align="L",
-            new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-        )
-        y = pdf.get_y()
-        pdf.line(pdf.l_margin, y, pdf.w - pdf.r_margin, y)
-        pdf.ln(1.5)
-        
-    # Helper: ข้อมูล 1 row
-    def add_secure_row(label, value):
-        label = str(label)
-        value = str(value) if value is not None else "-"
-        set_font(15)
-        
-        start_x = pdf.get_x()
-        start_y = pdf.get_y()
-        
-        label_height = pdf.multi_cell(
-            w=LABEL_WIDTH, h=6, text=label, border=0, dry_run=True, output="HEIGHT", wrapmode="CHAR"
-        )
-        value_height = pdf.multi_cell(
-            w=VALUE_WIDTH, h=6, text=value, border=0, dry_run=True, output="HEIGHT", wrapmode="CHAR"
-        )
-        row_height = max(label_height, value_height, 6)
-        
-        available_height = pdf.h - pdf.b_margin - pdf.get_y()
-        if row_height > available_height:
-            pdf.add_page()
-            start_x = pdf.l_margin
-            start_y = pdf.get_y()
-            
-        pdf.set_xy(start_x, start_y)
-        pdf.multi_cell(
-            w=LABEL_WIDTH, h=6, text=label, border=0, align="L",
-            new_x=XPos.RIGHT, new_y=YPos.TOP, wrapmode="CHAR"
-        )
-        
-        pdf.set_xy(start_x + LABEL_WIDTH, start_y)
-        pdf.multi_cell(
-            w=VALUE_WIDTH, h=6, text=value, border=0, align="L",
-            new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-        )
-        pdf.set_y(start_y + row_height)
-        
-    # 7. HEADER
-    set_font(21)
-    pdf.multi_cell(
-        w=PAGE_WIDTH, h=8, text="รายงานสรุปการประเมิน Asthma / COPD", border=0, align="C",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-    )
-    set_font(16)
-    pdf.multi_cell(
-        w=PAGE_WIDTH, h=7, text="คลินิกโรคปอด โรงพยาบาลวานรนิวาส", border=0, align="C",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-    )
-    
-    y = pdf.get_y()
-    pdf.line(pdf.l_margin, y, pdf.w - pdf.r_margin, y)
-    pdf.ln(3)
-    
-    # 8. Patient Information
-    add_section_title("ข้อมูลผู้ป่วย (Patient Information)")
-    add_secure_row("เลขประจำตัวผู้ป่วย (HN):", data.get("hn") if data.get("hn") else "- ไม่ระบุ -")
-    add_secure_row("ประเภทโรค (Disease):", data.get("disease", "-"))
-    add_secure_row("อายุ / เพศ:", f"{data.get('age', '-')} ปี / {data.get('sex', '-')} (BMI: {data.get('bmi', 0):.1f})")
-    add_secure_row("ค่าเป้าหมายปอด (Predicted PEFR):", f"{data.get('pred_pefr', 0)} L/min")
-    pdf.ln(2)
-    
-    # 9. Symptoms & Tests
-    add_section_title("ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ (Symptoms & Tests)")
-    add_secure_row("อาการกลางวัน / กลางคืน:", f"{data.get('day_symp', '-')} / {data.get('night_symp', '-')}")
-    add_secure_row("ประวัติเข้า ER หรือ Admit:", f"ER {data.get('er_visit', 0)} ครั้ง / Admit {data.get('admit_days', 0)} วัน")
-    add_secure_row("ประวัติการสูบบุหรี่ (Smoking):", data.get("smoking", "-"))
-    add_secure_row("ลักษณะเสมหะ (Sputum):", data.get("sputum", "-"))
-    add_secure_row("คะแนนความเหนื่อยหอบ (mMRC):", data.get("mmrc", "-"))
-    
-    if "COPD" in data.get("disease", ""):
-        add_secure_row("คะแนน CAT Score:", f"{data.get('cat', 0)} คะแนน")
-        
-    add_secure_row("ระยะทางเดิน 6 นาที (6MWT):", f"{data.get('walk_dist', 0)} เมตร")
-    add_secure_row("ออกซิเจนในเลือด (SpO2 Room Air):", f"{data.get('o2_sat', 0)} %")
-    pdf.ln(2)
-    
-    # 10. Clinical Assessment
-    add_section_title("ผลการประเมินทางคลินิก (Clinical Assessment)")
-    add_secure_row("ระดับการควบคุมโรค (Control Level):", data.get("control", "-"))
-    add_secure_row("ความเสี่ยงกำเริบ (Exacerbation Risk):", data.get("risk", "-"))
-    add_secure_row("สมรรถภาพปอด (%Predicted PEFR):", f"{data.get('pct_pred', 0):.1f}% (เป่าได้ {data.get('pre_pefr', 0)} L/min)")
-    add_secure_row("ความร่วมมือในการใช้ยา (Adherence):", f"{data.get('adherence', 0)}%")
-    pdf.ln(2)
-    
-    # 11. Doctor's Summary
-    add_section_title("สรุปและคำแนะนำ (Doctor's Summary & Suggestions)")
-    suggestions = data.get("suggestions", [])
-    if suggestions:
-        for sug in suggestions:
-            set_font(15)
-            pdf.multi_cell(
-                w=PAGE_WIDTH, h=6, text=f"- {str(sug)}", border=0, align="L",
-                new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-            )
-    else:
-        set_font(15)
-        pdf.multi_cell(
-            w=PAGE_WIDTH, h=6, text="- ไม่มีคำแนะนำเพิ่มเติม", border=0, align="L",
-            new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-        )
-        
-    # 12. Signature
-    pdf.ln(5)
-    set_font(15)
-    pdf.multi_cell(
-        w=PAGE_WIDTH, h=6, text="ลงชื่อผู้ประเมิน.......................................................", border=0, align="R",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-    )
-    pdf.multi_cell(
-        w=PAGE_WIDTH, h=6, text="วันที่........./........./.........", border=0, align="R",
-        new_x=XPos.LMARGIN, new_y=YPos.NEXT, wrapmode="CHAR"
-    )
-    
-    # 13. Save PDF
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    tmp_file.close()
-    pdf.output(tmp_file.name)
-    return tmp_file.name
-
 # ==========================================
 # UI หน้าเว็บหลัก
 # ==========================================
 st.title("🫁 Asthma/COPD Follow-up Dashboard")
-st.markdown("ระบบบันทึกและประเมินผลการรักษาผู้ป่วยโรคทางเดินหายใจตีบ 🏥✨")
+st.markdown("ระบบบันทึกและประเมินผลการรักษาผู้ป่วยโรคทางเดินหายใจตีบ คลินิกโรคปอด โรงพยาบาลวานรนิวาส 🏥✨")
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "👤 1. ข้อมูลทั่วไป", "🗣️ 2. ประเมินอาการ", "🫁 3. สมรรถภาพปอด", 
@@ -309,52 +133,65 @@ with tab6:
     for s in suggestions: st.write(f"- {s}")
         
     st.markdown("---")
-    st.subheader("📄 ส่งออกรายงาน (Export Report)")
+    st.subheader("📄 รายงานสรุปรูปแบบข้อความ (Plain Text Report)")
     
-    report_data = {
-        "hn": hn,
-        "disease": disease_type,
-        "age": age,
-        "sex": sex,
-        "bmi": bmi,
-        "pred_pefr": pred_pefr,
-        "control": control_level,
-        "risk": risk_level,
-        "pre_pefr": pre_pefr,
-        "pct_pred": pct,
-        "adherence": adherence,
-        "cat": st.session_state.cat_score,
-        "suggestions": suggestions,
-        "day_symp": day_symp,
-        "night_symp": night_symp,
-        "rescue_med": rescue_med,
-        "er_visit": er_visit,
-        "admit_days": admit_days,
-        "smoking": "สูบบุหรี่" if smoking else "ไม่สูบ",
-        "sputum": "มีเสมหะเหลือง/เขียว" if sputum else "ไม่มี",
-        "mmrc": mmrc_score_only,
-        "walk_dist": walk_dist,
-        "o2_sat": o2_sat
-    }
+    # 📝 จัดรูปแบบข้อความ Plain Text สำหรับรายงาน
+    patient_hn = hn.strip() if hn.strip() != "" else "- ไม่ระบุ -"
+    smoking_status = "สูบบุหรี่" if smoking else "ไม่สูบ"
+    sputum_status = "มีเสมหะเหลือง/เขียว" if sputum else "ไม่มี"
     
+    report_text = f"""========================================
+รายงานสรุปการประเมิน Asthma / COPD
+คลินิกโรคปอด โรงพยาบาลวานรนิวาส
+========================================
+[ ข้อมูลผู้ป่วย ]
+- เลขประจำตัวผู้ป่วย (HN): {patient_hn}
+- ประเภทโรค: {disease_type}
+- อายุ / เพศ: {age} ปี / {sex} (BMI: {bmi:.1f})
+- ค่าเป้าหมายปอด (Predicted PEFR): {pred_pefr} L/min
+
+[ ข้อมูลการประเมินอาการ 4 สัปดาห์และการทดสอบ ]
+- อาการกลางวัน / กลางคืน: {day_symp} / {night_symp}
+- ประวัติเข้า ER หรือ Admit: ER {er_visit} ครั้ง / Admit {admit_days} วัน
+- ประวัติการสูบบุหรี่: {smoking_status}
+- ลักษณะเสมหะ: {sputum_status}
+- คะแนนความเหนื่อยหอบ (mMRC): {mmrc_score_only}"""
+
+    if "COPD" in disease_type:
+        report_text += f"\n- คะแนน CAT Score: {st.session_state.cat_score} คะแนน"
+
+    report_text += f"""
+- ระยะทางเดิน 6 นาที (6MWT): {walk_dist} เมตร
+- ออกซิเจนในเลือด (SpO2 Room Air): {o2_sat} %
+
+[ ผลการประเมินทางคลินิก ]
+- ระดับการควบคุมโรค: {control_level}
+- ความเสี่ยงกำเริบ: {risk_level}
+- สมรรถภาพปอด (%Predicted PEFR): {pct:.1f}% (เป่าได้ {pre_pefr} L/min)
+- ความร่วมมือในการใช้ยา (Adherence): {adherence}%
+
+[ สรุปและคำแนะนำสำหรับแพทย์ ]
+"""
+    for s in suggestions:
+        report_text += f"- {s}\n"
+
+    report_text += """========================================
+ลงชื่อผู้ประเมิน: .......................................
+วันที่: ...../...../.....
+ปรับปรุงวันที่ 17 กันยายน พ.ศ. 2569
+========================================"""
+
+    # 🖥️ แสดงผลในกล่องข้อความเพื่อให้คัดลอกง่าย
+    st.text_area("คัดลอกข้อความด้านล่างนี้เพื่อนำไปใช้งาน:", report_text, height=300)
+    
+    # 💾 ปุ่มดาวน์โหลดเป็นไฟล์ .txt
     filename_hn = hn.strip() if hn.strip() != "" else "No_HN"
-    export_filename = f"Report_Asthma_COPD_HN_{filename_hn}.pdf"
+    export_filename = f"Report_Asthma_COPD_HN_{filename_hn}.txt"
     
-    if st.button("🖨️ สร้างและดาวน์โหลดไฟล์ PDF (A4)", type="primary"):
-        with st.spinner("กำลังจัดหน้ากระดาษและสร้าง PDF... ⏳"):
-            try:
-                if not os.path.exists("THSarabunNew.ttf"):
-                    st.warning("⚠️ ไม่พบไฟล์ฟอนต์ 'THSarabunNew.ttf' ระบบจะใช้ฟอนต์ภาษาอังกฤษแทน ซึ่งอาจทำให้ภาษาไทยอ่านไม่ออก")
-                    
-                pdf_path = generate_pdf_report(report_data)
-                
-                with open(pdf_path, "rb") as pdf_file:
-                    st.download_button(
-                        label=f"📥 คลิกที่นี่เพื่อดาวน์โหลด (ชื่อไฟล์: {export_filename})",
-                        data=pdf_file,
-                        file_name=export_filename,
-                        mime="application/pdf"
-                    )
-                st.success(f"✅ สร้างไฟล์ {export_filename} สำเร็จแล้ว!")
-            except Exception as e:
-                st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+    st.download_button(
+        label=f"📥 ดาวน์โหลดรายงาน (.txt)",
+        data=report_text,
+        file_name=export_filename,
+        mime="text/plain",
+        type="primary"
+    )
